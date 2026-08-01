@@ -767,14 +767,27 @@ function setupEventListeners() {
     
     if (addBtn && habitInput) {
         addBtn.addEventListener('click', async () => {
-            const name = habitInput.value.trim();
-            if (name) {
-                await tracker.addHabit(name);
-                habitInput.value = '';
-                renderCalendarHeader();
-                renderHabits();
-                renderCharts();
+            if (!tracker) {
+                showAlert('login-alert-container', 'Please sign in before adding habits.', 'error');
+                return;
             }
+
+            const name = habitInput.value.trim();
+            if (!name) {
+                showAlert('login-alert-container', 'Please enter a habit name.', 'error');
+                return;
+            }
+
+            const added = await tracker.addHabit(name);
+            if (!added) {
+                showAlert('login-alert-container', 'Unable to add habit. Please try again.', 'error');
+                return;
+            }
+
+            habitInput.value = '';
+            renderCalendarHeader();
+            renderHabits();
+            renderCharts();
         });
         
         habitInput.addEventListener('keypress', (e) => {
