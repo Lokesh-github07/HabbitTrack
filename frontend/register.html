@@ -4,91 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - HabitTrack</title>
-    <link rel="stylesheet" href="../styles-auth.css">
+    <link rel="stylesheet" href="styles-auth.css">
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-wrapper">
-            <!-- Logo Section -->
             <div class="logo-section">
                 <h1>HabitTrack</h1>
                 <p>Build better habits, one day at a time</p>
             </div>
 
-            <!-- Registration Form -->
             <div class="auth-form-container">
                 <h2>Create Account</h2>
                 <p class="auth-subtitle">Join thousands building better habits</p>
 
-                <!-- Alert Messages -->
                 <div id="alert-container"></div>
 
                 <form id="register-form" class="auth-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="first-name">First Name</label>
-                            <input 
-                                type="text" 
-                                id="first-name" 
-                                name="first_name" 
-                                placeholder="John"
-                            >
+                            <input type="text" id="first-name" name="first_name" placeholder="John">
                         </div>
-
                         <div class="form-group">
                             <label for="last-name">Last Name</label>
-                            <input 
-                                type="text" 
-                                id="last-name" 
-                                name="last_name" 
-                                placeholder="Doe"
-                            >
+                            <input type="text" id="last-name" name="last_name" placeholder="Doe">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="username">Username</label>
-                        <input 
-                            type="text" 
-                            id="username" 
-                            name="username" 
-                            placeholder="johndoe"
-                            required
-                        >
+                        <input type="text" id="username" name="username" placeholder="johndoe" required>
                     </div>
 
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            placeholder="you@example.com"
-                            required
-                        >
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required>
                     </div>
 
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            placeholder="Minimum 8 characters"
-                            required
-                        >
+                        <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required>
                         <small>Must contain at least 8 characters</small>
                     </div>
 
                     <div class="form-group">
                         <label for="confirm-password">Confirm Password</label>
-                        <input 
-                            type="password" 
-                            id="confirm-password" 
-                            name="confirm_password" 
-                            placeholder="Confirm your password"
-                            required
-                        >
+                        <input type="password" id="confirm-password" name="confirm_password" placeholder="Confirm your password" required>
                     </div>
 
                     <div class="form-group checkbox">
@@ -99,12 +61,8 @@
                     <button type="submit" class="btn btn-primary btn-block">Create Account</button>
                 </form>
 
-                <!-- Divider -->
-                <div class="divider">
-                    <span>OR</span>
-                </div>
+                <div class="divider"><span>OR</span></div>
 
-                <!-- Social Login -->
                 <div class="social-login">
                     <button type="button" class="btn btn-social" id="google-signup">
                         <span class="social-icon">G</span>
@@ -112,71 +70,22 @@
                     </button>
                 </div>
 
-                <!-- Footer Link -->
                 <div class="auth-footer">
                     <p>Already have an account? <a href="login.html" class="link">Sign in here</a></p>
                 </div>
             </div>
         </div>
 
-        <!-- Illustration Side -->
         <div class="auth-illustration">
             <div class="illustration-content">
                 <h3>✨</h3>
                 <h3>Build Better Habits</h3>
-                <p>Start your journey to self-improvement today</p>
+                <p>Start your journey to self-improvement today with a polished neon-glass dashboard.</p>
                 <div class="feature-list">
                     <div class="feature-item">✓ Free account setup</div>
                     <div class="feature-item">✓ Instant access</div>
                     <div class="feature-item">✓ No credit card needed</div>
                     <div class="feature-item">✓ Start tracking immediately</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="../js/auth.js"></script>
-</body>
-</html>
-                    <span>Or sign up with</span>
-                </div>
-
-                <!-- OAuth Buttons -->
-                <div class="oauth-buttons">
-                    <a href="/api/auth/google" class="btn btn-oauth google">
-                        <svg viewBox="0 0 24 24" width="20" height="20">
-                            <text x="0" y="20">Google</text>
-                        </svg>
-                        Google
-                    </a>
-                    <a href="/api/auth/microsoft" class="btn btn-oauth microsoft">
-                        <svg viewBox="0 0 24 24" width="20" height="20">
-                            <text x="0" y="20">Microsoft</text>
-                        </svg>
-                        Microsoft
-                    </a>
-                </div>
-
-                <!-- Sign In Link -->
-                <p class="auth-footer">
-                    Already have an account? <a href="login.html">Sign in here</a>
-                </p>
-            </div>
-
-            <!-- Error Message -->
-            <div id="error-message" class="error-message" style="display: none;"></div>
-        </div>
-
-        <!-- Illustration -->
-        <div class="auth-illustration">
-            <div class="illustration-content">
-                <h3>Start Your Journey</h3>
-                <p>Transform your life through consistent habit tracking. Small steps lead to big changes.</p>
-                <div class="feature-list">
-                    <div class="feature-item">- Free to start</div>
-                    <div class="feature-item">- No credit card required</div>
-                    <div class="feature-item">- Privacy focused</div>
-                    <div class="feature-item">- Share your progress</div>
                 </div>
             </div>
         </div>

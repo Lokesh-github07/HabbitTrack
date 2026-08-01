@@ -244,26 +244,82 @@
             <section class="analytics-section" style="display: none;">
                 <div class="section-header">
                     <h2>Analytics & Insights</h2>
+                    <p>Visualize your progress and stay motivated.</p>
                 </div>
 
-                <!-- Charts Container -->
                 <div class="charts-container">
-                    <!-- Pie Chart -->
                     <div class="chart-box">
                         <h3>Habit Completion Rate</h3>
                         <canvas id="pie-chart"></canvas>
                     </div>
 
-                    <!-- Line Chart -->
                     <div class="chart-box">
                         <h3>Weekly Completion Trend</h3>
                         <canvas id="line-chart"></canvas>
                     </div>
 
-                    <!-- Bar Chart -->
                     <div class="chart-box">
                         <h3>Habit Performance</h3>
                         <canvas id="bar-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile & Settings Section -->
+            <section class="profile-section" style="display: none;">
+                <div class="section-header">
+                    <h2>Profile & Settings</h2>
+                    <p>Update your account details and personalize your dashboard.</p>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="glass-card">
+                        <div class="card-header">Account details</div>
+                        <form id="profile-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="profile-username">Username</label>
+                                <input type="text" id="profile-username" name="username" placeholder="Enter username">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-email">Email</label>
+                                <input type="email" id="profile-email" name="email" placeholder="Enter email">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profile-first-name">First name</label>
+                                    <input type="text" id="profile-first-name" name="first_name" placeholder="First name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-last-name">Last name</label>
+                                    <input type="text" id="profile-last-name" name="last_name" placeholder="Last name">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-password">New password</label>
+                                <input type="password" id="profile-password" name="password" placeholder="Leave blank to keep current password">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Save changes</button>
+                            <div id="profile-status" class="status-message"></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-card">
+                        <div class="card-header">Preferences</div>
+                        <div class="settings-list">
+                            <label class="toggle-row">
+                                <span>Neon mode</span>
+                                <input type="checkbox" id="pref-neon" checked>
+                            </label>
+                            <label class="toggle-row">
+                                <span>Show streak reminders</span>
+                                <input type="checkbox" id="pref-reminders" checked>
+                            </label>
+                            <label class="toggle-row">
+                                <span>Show weekly insights</span>
+                                <input type="checkbox" id="pref-insights" checked>
+                            </label>
+                            <div class="setting-hint">Your theme and preferences are saved locally in this browser for a more personal experience.</div>
+                        </div>
                     </div>
                 </div>
             </section>

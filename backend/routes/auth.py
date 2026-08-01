@@ -1,10 +1,8 @@
-from flask import Blueprint, request, jsonify, session, redirect, url_for
+from flask import Blueprint, request, jsonify, redirect
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, OAuthToken
-from functools import wraps
 import requests
 from datetime import datetime, timedelta
-import secrets
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -22,11 +20,10 @@ def register():
         if not data.get('username'):
             return jsonify({'error': 'Username required'}), 400
         
-        # Check if user exists
-        if User.query.filter_by(email=data['email']).first():
+        if User.find_by_email(data['email']):
             return jsonify({'error': 'Email already registered'}), 409
         
-        if User.query.filter_by(username=data['username']).first():
+        if User.find_by_username(data['username']):
             return jsonify({'error': 'Username already taken'}), 409
         
         # Password validation
@@ -66,7 +63,7 @@ def login():
         if not data or not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password required'}), 400
         
-        user = User.query.filter_by(email=data['email']).first()
+        user = User.find_by_email(data['email'])
         
         if not user or not user.check_password(data['password']):
             return jsonify({'error': 'Invalid email or password'}), 401
@@ -93,7 +90,7 @@ def logout():
 
 @auth_bp.route('/current-user', methods=['GET'])
 @login_required
-def get_current_user():
+def current_user_info():
     """Get current user info"""
     return jsonify(current_user.to_dict()), 200
 
@@ -159,10 +156,10 @@ def google_callback():
         user_info = requests.get(user_info_url, headers=headers).json()
         
         # Find or create user
-        user = User.query.filter_by(google_id=user_info['sub']).first()
+        user = User.find_by_google_id(user_info['sub'])
         
         if not user:
-            user = User.query.filter_by(email=user_info['email']).first()
+            user = User.find_by_email(user_info['email'])
             if not user:
                 user = User(
                     email=user_info['email'],
@@ -306,6 +303,44 @@ def microsoft_callback():
 def get_current_user():
     """Get current user info"""
     return jsonify(current_user.to_dict()), 200
+
+@auth_bp.route('/profile', methods=['PUT'])
+@login_required
+def update_profile():
+    """Update the current user's profile details."""
+    try:
+        data = request.get_json() or {}
+        user = current_user
+
+        if data.get('username'):
+            existing = User.find_by_username(data['username'])
+            if existing and existing.id != user.id:
+                return jsonify({'error': 'Username already taken'}), 409
+            user.username = data['username']
+
+        if data.get('email'):
+            existing = User.find_by_email(data['email'])
+            if existing and existing.id != user.id:
+                return jsonify({'error': 'Email already registered'}), 409
+            user.email = data['email']
+
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+
+        if data.get('password'):
+            if len(data['password']) < 8:
+                return jsonify({'error': 'Password must be at least 8 characters'}), 400
+            user.set_password(data['password'])
+
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'message': 'Profile updated', 'user': user.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/verify-email', methods=['POST'])
 @login_required

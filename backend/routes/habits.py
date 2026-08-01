@@ -5,13 +5,20 @@ from datetime import datetime, date
 
 habits_bp = Blueprint('habits', __name__, url_prefix='/api/habits')
 
+
+def serialize_habit(habit):
+    data = habit.to_dict()
+    completions = HabitCompletion.query.filter_by(habit_id=habit.id).all()
+    data['completions'] = [completion.to_dict() for completion in completions]
+    return data
+
 @habits_bp.route('', methods=['GET'])
 @login_required
 def get_habits():
     """Get all habits for current user"""
     try:
         habits = Habit.query.filter_by(user_id=current_user.id).all()
-        return jsonify([habit.to_dict() for habit in habits]), 200
+        return jsonify([serialize_habit(habit) for habit in habits]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -36,7 +43,7 @@ def create_habit():
         
         return jsonify({
             'message': 'Habit created',
-            'habit': habit.to_dict()
+            'habit': serialize_habit(habit)
         }), 201
     
     except Exception as e:
@@ -56,7 +63,7 @@ def get_habit(habit_id):
         if not habit:
             return jsonify({'error': 'Habit not found'}), 404
         
-        return jsonify(habit.to_dict()), 200
+        return jsonify(serialize_habit(habit)), 200
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -86,7 +93,7 @@ def update_habit(habit_id):
         
         return jsonify({
             'message': 'Habit updated',
-            'habit': habit.to_dict()
+            'habit': serialize_habit(habit)
         }), 200
     
     except Exception as e:

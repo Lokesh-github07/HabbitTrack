@@ -4,46 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - HabitTrack</title>
-    <link rel="stylesheet" href="../styles-auth.css">
+    <link rel="stylesheet" href="styles-auth.css">
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-wrapper">
-            <!-- Logo Section -->
             <div class="logo-section">
                 <h1>HabitTrack</h1>
                 <p>Build better habits, one day at a time</p>
             </div>
 
-            <!-- Login Form -->
             <div class="auth-form-container">
                 <h2>Welcome Back</h2>
                 <p class="auth-subtitle">Sign in to continue tracking your habits</p>
 
-                <!-- Alert Messages -->
                 <div id="alert-container"></div>
 
                 <form id="login-form" class="auth-form">
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            placeholder="you@example.com"
-                            required
-                        >
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required>
                     </div>
 
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            placeholder="Enter your password"
-                            required
-                        >
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
                     </div>
 
                     <div class="form-group checkbox">
@@ -54,12 +39,8 @@
                     <button type="submit" class="btn btn-primary btn-block">Sign In</button>
                 </form>
 
-                <!-- Divider -->
-                <div class="divider">
-                    <span>OR</span>
-                </div>
+                <div class="divider"><span>OR</span></div>
 
-                <!-- Social Login -->
                 <div class="social-login">
                     <button type="button" class="btn btn-social" id="google-login">
                         <span class="social-icon">G</span>
@@ -67,7 +48,6 @@
                     </button>
                 </div>
 
-                <!-- Footer Link -->
                 <div class="auth-footer">
                     <p>Don't have an account? <a href="register.html" class="link">Sign up here</a></p>
                     <p><a href="#" class="link">Forgot your password?</a></p>
@@ -75,70 +55,16 @@
             </div>
         </div>
 
-        <!-- Illustration Side -->
         <div class="auth-illustration">
             <div class="illustration-content">
                 <h3>🚀</h3>
                 <h3>Transform Your Life</h3>
-                <p>Track your daily habits and build a better version of yourself</p>
+                <p>Track your daily habits and build a better version of yourself.</p>
                 <div class="feature-list">
                     <div class="feature-item">✓ Daily habit tracking</div>
                     <div class="feature-item">✓ Progress analytics</div>
                     <div class="feature-item">✓ Streak counts</div>
                     <div class="feature-item">✓ Social sharing</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="../js/auth.js"></script>
-</body>
-</html>
-
-                    <button type="submit" class="btn btn-primary">Sign In</button>
-                </form>
-
-                <!-- Divider -->
-                <div class="divider">
-                    <span>Or continue with</span>
-                </div>
-
-                <!-- OAuth Buttons -->
-                <div class="oauth-buttons">
-                    <a href="/api/auth/google" class="btn btn-oauth google">
-                        <svg viewBox="0 0 24 24" width="20" height="20">
-                            <text x="0" y="20">Google</text>
-                        </svg>
-                        Google
-                    </a>
-                    <a href="/api/auth/microsoft" class="btn btn-oauth microsoft">
-                        <svg viewBox="0 0 24 24" width="20" height="20">
-                            <text x="0" y="20">Microsoft</text>
-                        </svg>
-                        Microsoft
-                    </a>
-                </div>
-
-                <!-- Sign Up Link -->
-                <p class="auth-footer">
-                    Don't have an account? <a href="register.html">Sign up here</a>
-                </p>
-            </div>
-
-            <!-- Error Message -->
-            <div id="error-message" class="error-message" style="display: none;"></div>
-        </div>
-
-        <!-- Illustration -->
-        <div class="auth-illustration">
-            <div class="illustration-content">
-                <h3>Track Your Progress</h3>
-                <p>Monitor your daily habits and watch yourself grow. Build consistency and achieve your goals.</p>
-                <div class="feature-list">
-                    <div class="feature-item">- Daily habit tracking</div>
-                    <div class="feature-item">- Progress analytics</div>
-                    <div class="feature-item">- Social sharing</div>
-                    <div class="feature-item">- Streak tracking</div>
                 </div>
             </div>
         </div>

@@ -2,7 +2,7 @@
 // CONFIGURATION
 // =====================
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 // =====================
 // AUTHENTICATION MODAL MANAGEMENT
@@ -65,6 +65,46 @@ function initializeUserProfile() {
         const firstLetter = ((userData.first_name || userData.username || 'U')[0]).toUpperCase();
         avatarEl.textContent = firstLetter;
     }
+
+    populateProfileForm(userData);
+}
+
+function getPreferences() {
+    try {
+        return JSON.parse(localStorage.getItem('habittrack_preferences') || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function savePreferences(preferences) {
+    localStorage.setItem('habittrack_preferences', JSON.stringify(preferences));
+    applyPreferences();
+}
+
+function applyPreferences() {
+    const prefs = getPreferences();
+    const neonToggle = document.getElementById('pref-neon');
+    if (neonToggle) neonToggle.checked = prefs.neon !== false;
+    const remindersToggle = document.getElementById('pref-reminders');
+    if (remindersToggle) remindersToggle.checked = prefs.reminders !== false;
+    const insightsToggle = document.getElementById('pref-insights');
+    if (insightsToggle) insightsToggle.checked = prefs.insights !== false;
+}
+
+function populateProfileForm(userData) {
+    if (!userData) return;
+    const fields = {
+        'profile-username': userData.username || '',
+        'profile-email': userData.email || '',
+        'profile-first-name': userData.first_name || '',
+        'profile-last-name': userData.last_name || ''
+    };
+
+    Object.entries(fields).forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if (field) field.value = value;
+    });
 }
 
 // =====================
@@ -72,6 +112,55 @@ function initializeUserProfile() {
 // =====================
 
 function setupAuthHandlers() {
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('profile-status');
+            const formData = {
+                username: document.getElementById('profile-username').value.trim(),
+                email: document.getElementById('profile-email').value.trim(),
+                first_name: document.getElementById('profile-first-name').value.trim(),
+                last_name: document.getElementById('profile-last-name').value.trim(),
+                password: document.getElementById('profile-password').value
+            };
+
+            if (statusEl) {
+                statusEl.textContent = 'Saving...';
+                statusEl.className = 'status-message';
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    initializeUserProfile();
+                    if (statusEl) {
+                        statusEl.textContent = 'Profile updated successfully.';
+                        statusEl.className = 'status-message success';
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = data.error || 'Unable to update profile.';
+                        statusEl.className = 'status-message error';
+                    }
+                }
+            } catch (error) {
+                if (statusEl) {
+                    statusEl.textContent = 'Connection error. Please try again.';
+                    statusEl.className = 'status-message error';
+                }
+            }
+        });
+    }
+
     // Login form handler
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -89,7 +178,7 @@ function setupAuthHandlers() {
                     body: JSON.stringify({ email, password })
                 });
                 
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
                 
                 if (response.ok) {
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -97,7 +186,7 @@ function setupAuthHandlers() {
                     initializeUserProfile();
                     initializeApp();
                 } else {
-                    showAlert('login-alert-container', data.message || 'Login failed', 'error');
+                    showAlert('login-alert-container', data.error || data.message || 'Login failed', 'error');
                 }
             } catch (error) {
                 showAlert('login-alert-container', 'An error occurred', 'error');
@@ -140,7 +229,7 @@ function setupAuthHandlers() {
                     body: JSON.stringify(formData)
                 });
                 
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
                 
                 if (response.ok) {
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -148,7 +237,7 @@ function setupAuthHandlers() {
                     initializeUserProfile();
                     initializeApp();
                 } else {
-                    showAlert('register-alert-container', data.message || 'Registration failed', 'error');
+                    showAlert('register-alert-container', data.error || data.message || 'Registration failed', 'error');
                 }
             } catch (error) {
                 showAlert('register-alert-container', 'An error occurred', 'error');
@@ -175,6 +264,25 @@ function setupAuthHandlers() {
 }
 
 // Logout handler
+function setupPreferencesHandlers() {
+    const prefNeon = document.getElementById('pref-neon');
+    const prefReminders = document.getElementById('pref-reminders');
+    const prefInsights = document.getElementById('pref-insights');
+
+    const persistPreferences = () => {
+        const preferences = {
+            neon: prefNeon ? prefNeon.checked : true,
+            reminders: prefReminders ? prefReminders.checked : true,
+            insights: prefInsights ? prefInsights.checked : true
+        };
+        savePreferences(preferences);
+    };
+
+    [prefNeon, prefReminders, prefInsights].forEach((toggle) => {
+        toggle?.addEventListener('change', persistPreferences);
+    });
+}
+
 function setupLogoutHandler() {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -205,15 +313,24 @@ const HABITS_KEY = 'habitTracker_habits';
 
 class HabitTracker {
     constructor() {
-        this.habits = this.loadHabits();
+        this.habits = [];
         this.currentWeekStart = this.getWeekStart(new Date());
         this.chartInstances = {};
         this.daysInView = 14;
     }
 
-    loadHabits() {
-        const saved = localStorage.getItem(HABITS_KEY);
-        return saved ? JSON.parse(saved) : [];
+    async loadHabits() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/habits`, { credentials: 'include' });
+            const data = await response.json().catch(() => []);
+            if (Array.isArray(data)) {
+                this.habits = data;
+                localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
+            }
+        } catch (error) {
+            const saved = localStorage.getItem(HABITS_KEY);
+            this.habits = saved ? JSON.parse(saved) : [];
+        }
     }
 
     saveHabits() {
@@ -233,33 +350,59 @@ class HabitTracker {
         return end;
     }
 
-    addHabit(name) {
+    async addHabit(name) {
         if (!name.trim()) return false;
         
-        const habit = {
-            id: Date.now(),
-            name: name.trim(),
-            createdAt: new Date().toISOString(),
-            completions: {}
-        };
-        
-        this.habits.push(habit);
-        this.saveHabits();
-        return habit;
+        const response = await fetch(`${API_BASE_URL}/habits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name: name.trim() })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.habit) {
+            this.habits.push(data.habit);
+            this.saveHabits();
+            return data.habit;
+        }
+        return false;
     }
 
-    deleteHabit(habitId) {
-        this.habits = this.habits.filter(h => h.id !== habitId);
-        this.saveHabits();
+    async deleteHabit(habitId) {
+        const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            this.habits = this.habits.filter(h => h.id !== habitId);
+            this.saveHabits();
+        }
     }
 
-    toggleCompletion(habitId, dateStr) {
+    async toggleCompletion(habitId, dateStr) {
         const habit = this.habits.find(h => h.id === habitId);
         if (!habit) return false;
         
-        habit.completions[dateStr] = !habit.completions[dateStr];
-        this.saveHabits();
-        return habit.completions[dateStr];
+        const response = await fetch(`${API_BASE_URL}/habits/${habitId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ date: `${dateStr}` })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+            const completion = data.completion || {};
+            const exists = habit.completions.some(item => item.date === completion.date);
+            if (exists) {
+                habit.completions = habit.completions.filter(item => item.date !== completion.date);
+            }
+            if (completion.completed !== false) {
+                habit.completions.push(completion);
+            }
+            this.saveHabits();
+            return completion.completed;
+        }
+        return false;
     }
 
     getStreak(habitId) {
@@ -289,9 +432,9 @@ class HabitTracker {
         if (!habit) return 0;
         
         const today = new Date();
-        const createdDate = new Date(habit.createdAt);
+        const createdDate = new Date(habit.created_at || habit.createdAt || new Date());
         const daysPassed = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24)) + 1;
-        const completedDays = Object.values(habit.completions).filter(v => v).length;
+        const completedDays = (habit.completions || []).filter(item => item.completed).length;
         
         return Math.round((completedDays / daysPassed) * 100);
     }
@@ -303,13 +446,14 @@ class HabitTracker {
 
 let tracker;
 
-function initializeApp() {
+async function initializeApp() {
     const user = checkAuth();
     if (!user) return;
     
     initializeUserProfile();
     
     tracker = new HabitTracker();
+    await tracker.loadHabits();
     
     renderCalendarHeader();
     renderHabits();
@@ -319,10 +463,10 @@ function initializeApp() {
 
 function renderCalendarHeader() {
     const header = document.getElementById('calendar-days-header');
-    if (!header) return;
+    if (!header || !tracker) return;
     
     header.innerHTML = '';
-    const weekStart = tracker.getWeekStart(new Date());
+    const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
     
     for (let i = 0; i < tracker.daysInView; i++) {
         const date = new Date(weekStart);
@@ -343,10 +487,10 @@ function renderCalendarHeader() {
 
 function updateWeekDisplay() {
     const display = document.getElementById('week-display');
-    if (!display) return;
+    if (!display || !tracker) return;
     
-    const weekStart = tracker.getWeekStart(new Date());
-    const weekEnd = tracker.getWeekEnd(new Date());
+    const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
+    const weekEnd = tracker.getWeekEnd(tracker.currentWeekStart || new Date());
     
     const startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -392,9 +536,10 @@ function renderHabits() {
         deleteBtn.textContent = '×';
         deleteBtn.onclick = () => {
             if (confirm('Delete this habit?')) {
-                tracker.deleteHabit(habit.id);
-                renderHabits();
-                renderCharts();
+                tracker.deleteHabit(habit.id).then(() => {
+                    renderHabits();
+                    renderCharts();
+                });
             }
         };
         
@@ -405,7 +550,7 @@ function renderHabits() {
         const habitsCheckboxes = document.createElement('div');
         habitsCheckboxes.className = 'habit-checkboxes';
         
-        const weekStart = tracker.getWeekStart(new Date());
+        const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
         
         for (let i = 0; i < tracker.daysInView; i++) {
             const date = new Date(weekStart);
@@ -415,13 +560,52 @@ function renderHabits() {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'habit-checkbox';
-            checkbox.checked = habit.completions[dateStr] || false;
-            checkbox.onchange = () => {
-                tracker.toggleCompletion(habit.id, dateStr);
-                renderHabits();
-                renderCharts();
-            };
-            
+            const completed = (habit.completions || []).some(item => item.date === dateStr && item.completed);
+            checkbox.checked = completed;
+
+            // Optimistic toggle handler: update UI immediately, then sync with server
+            checkbox.addEventListener('change', async (e) => {
+                const checked = e.target.checked;
+                if (!habit.completions) habit.completions = [];
+
+                // apply optimistic change locally
+                if (checked) {
+                    if (!habit.completions.some(item => item.date === dateStr)) {
+                        habit.completions.push({ date: dateStr, completed: true });
+                    }
+                } else {
+                    habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                }
+                tracker.saveHabits();
+
+                // disable while syncing
+                checkbox.disabled = true;
+                try {
+                    const ok = await tracker.toggleCompletion(habit.id, dateStr);
+                    if (ok === false) {
+                        // server returned failure; revert optimistic
+                        if (checked) {
+                            habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                        } else {
+                            habit.completions.push({ date: dateStr, completed: true });
+                        }
+                        tracker.saveHabits();
+                    }
+                } catch (err) {
+                    // revert on error
+                    if (checked) {
+                        habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                    } else {
+                        habit.completions.push({ date: dateStr, completed: true });
+                    }
+                    tracker.saveHabits();
+                } finally {
+                    checkbox.disabled = false;
+                    renderHabits();
+                    renderCharts();
+                }
+            });
+
             const label = document.createElement('label');
             label.className = 'checkbox-label';
             label.appendChild(checkbox);
@@ -582,10 +766,10 @@ function setupEventListeners() {
     const habitInput = document.getElementById('habit-input');
     
     if (addBtn && habitInput) {
-        addBtn.addEventListener('click', () => {
+        addBtn.addEventListener('click', async () => {
             const name = habitInput.value.trim();
             if (name) {
-                tracker.addHabit(name);
+                await tracker.addHabit(name);
                 habitInput.value = '';
                 renderCalendarHeader();
                 renderHabits();
@@ -605,6 +789,7 @@ function setupEventListeners() {
     
     if (prevWeekBtn) {
         prevWeekBtn.addEventListener('click', () => {
+            tracker.currentWeekStart = new Date(tracker.currentWeekStart || new Date());
             tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() - 7);
             renderCalendarHeader();
             renderHabits();
@@ -613,6 +798,7 @@ function setupEventListeners() {
     
     if (nextWeekBtn) {
         nextWeekBtn.addEventListener('click', () => {
+            tracker.currentWeekStart = new Date(tracker.currentWeekStart || new Date());
             tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() + 7);
             renderCalendarHeader();
             renderHabits();
@@ -622,19 +808,30 @@ function setupEventListeners() {
     const trackerLink = document.getElementById('tracker-link');
     const analyticsLink = document.getElementById('analytics-link');
     const profileLink = document.getElementById('profile-link');
+    const trackerSection = document.querySelector('.tracker-section');
+    const analyticsSection = document.querySelector('.analytics-section');
+    const profileSection = document.querySelector('.profile-section');
+
+    const setActiveSection = (activeLink) => {
+        [trackerLink, analyticsLink, profileLink].forEach((link) => {
+            link?.classList.toggle('active', link === activeLink);
+        });
+
+        if (trackerSection) trackerSection.style.display = activeLink === trackerLink ? 'flex' : 'none';
+        if (analyticsSection) analyticsSection.style.display = activeLink === analyticsLink ? 'flex' : 'none';
+        if (profileSection) profileSection.style.display = activeLink === profileLink ? 'flex' : 'none';
+    };
     
     if (trackerLink) {
-        trackerLink.addEventListener('click', () => {
-            document.querySelector('.tracker-section').style.display = 'block';
-            document.querySelector('.analytics-section').style.display = 'none';
-        });
+        trackerLink.addEventListener('click', () => setActiveSection(trackerLink));
     }
     
     if (analyticsLink) {
-        analyticsLink.addEventListener('click', () => {
-            document.querySelector('.tracker-section').style.display = 'none';
-            document.querySelector('.analytics-section').style.display = 'block';
-        });
+        analyticsLink.addEventListener('click', () => setActiveSection(analyticsLink));
+    }
+
+    if (profileLink) {
+        profileLink.addEventListener('click', () => setActiveSection(profileLink));
     }
 }
 
@@ -644,7 +841,9 @@ function setupEventListeners() {
 
 document.addEventListener('DOMContentLoaded', () => {
     setupAuthHandlers();
+    setupPreferencesHandlers();
     setupLogoutHandler();
+    applyPreferences();
     checkAuth();
     initializeApp();
 });
