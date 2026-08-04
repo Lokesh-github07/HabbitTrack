@@ -9,8 +9,7 @@ def get_database_uri():
     configured_uri = os.getenv('DATABASE_URL')
     if configured_uri:
         return configured_uri
-    return 'mysql+mysqlconnector://root:password@localhost:3306/habittrack'
-
+    return 'mysql+mysqlconnector://root:password@host.docker.internal:3306/habittrack'
 
 class Config:
     """Base configuration"""
@@ -44,7 +43,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
-    DATABASE_URL = 'mysql+mysqlconnector://root:password@localhost:3306/habittrack'
+    DATABASE_URL = 'mysql+mysqlconnector://root:password@host.docker.internal:3306/habittrack'
 
 
 config_by_name = {
