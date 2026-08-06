@@ -1,46 +1,308 @@
 // =====================
-// AUTHENTICATION
+// CONFIGURATION
 // =====================
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
-// Check if user is authenticated
+// =====================
+// AUTHENTICATION MODAL MANAGEMENT
+// =====================
+
+function showLoginModal() {
+    document.getElementById('login-modal').classList.add('active');
+    document.getElementById('register-modal').classList.remove('active');
+}
+
+function showRegisterModal() {
+    document.getElementById('login-modal').classList.remove('active');
+    document.getElementById('register-modal').classList.add('active');
+}
+
+function hideAuthModals() {
+    document.getElementById('login-modal').classList.remove('active');
+    document.getElementById('register-modal').classList.remove('active');
+}
+
+function showAlert(containerId, message, type) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="alert alert-${type}">
+            ${message}
+        </div>
+    `;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
 function checkAuth() {
     const user = localStorage.getItem('user');
     if (!user) {
-        window.location.href = '/frontend/login.html';
-        return false;
+        showLoginModal();
+        return null;
     }
+    
+    hideAuthModals();
     return JSON.parse(user);
 }
 
-// Initialize user profile
 function initializeUserProfile() {
-    const user = checkAuth();
-    if (user) {
-        document.getElementById('user-name').textContent = user.username || 'User';
-        document.getElementById('user-email').textContent = user.email || 'user@email.com';
-        
-        // Set avatar with first letter
-        const firstLetter = (user.first_name || user.username || 'U')[0].toUpperCase();
-        document.getElementById('user-avatar').textContent = firstLetter;
+    const user = localStorage.getItem('user');
+    if (!user) return;
+    
+    const userData = JSON.parse(user);
+    const nameEl = document.getElementById('user-name');
+    const emailEl = document.getElementById('user-email');
+    const avatarEl = document.getElementById('user-avatar');
+    
+    if (nameEl) nameEl.textContent = userData.first_name || userData.username || 'User';
+    if (emailEl) emailEl.textContent = userData.email || 'user@email.com';
+    
+    if (avatarEl) {
+        const firstLetter = ((userData.first_name || userData.username || 'U')[0]).toUpperCase();
+        avatarEl.textContent = firstLetter;
+    }
+
+    populateProfileForm(userData);
+}
+
+function getPreferences() {
+    try {
+        return JSON.parse(localStorage.getItem('habittrack_preferences') || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function savePreferences(preferences) {
+    localStorage.setItem('habittrack_preferences', JSON.stringify(preferences));
+    applyPreferences();
+}
+
+function applyPreferences() {
+    const prefs = getPreferences();
+    const neonToggle = document.getElementById('pref-neon');
+    if (neonToggle) neonToggle.checked = prefs.neon !== false;
+    const remindersToggle = document.getElementById('pref-reminders');
+    if (remindersToggle) remindersToggle.checked = prefs.reminders !== false;
+    const insightsToggle = document.getElementById('pref-insights');
+    if (insightsToggle) insightsToggle.checked = prefs.insights !== false;
+}
+
+function populateProfileForm(userData) {
+    if (!userData) return;
+    const fields = {
+        'profile-username': userData.username || '',
+        'profile-email': userData.email || '',
+        'profile-first-name': userData.first_name || '',
+        'profile-last-name': userData.last_name || ''
+    };
+
+    Object.entries(fields).forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if (field) field.value = value;
+    });
+}
+
+// =====================
+// AUTHENTICATION HANDLERS
+// =====================
+
+function setupAuthHandlers() {
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('profile-status');
+            const formData = {
+                username: document.getElementById('profile-username').value.trim(),
+                email: document.getElementById('profile-email').value.trim(),
+                first_name: document.getElementById('profile-first-name').value.trim(),
+                last_name: document.getElementById('profile-last-name').value.trim(),
+                password: document.getElementById('profile-password').value
+            };
+
+            if (statusEl) {
+                statusEl.textContent = 'Saving...';
+                statusEl.className = 'status-message';
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    initializeUserProfile();
+                    if (statusEl) {
+                        statusEl.textContent = 'Profile updated successfully.';
+                        statusEl.className = 'status-message success';
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = data.error || 'Unable to update profile.';
+                        statusEl.className = 'status-message error';
+                    }
+                }
+            } catch (error) {
+                if (statusEl) {
+                    statusEl.textContent = 'Connection error. Please try again.';
+                    statusEl.className = 'status-message error';
+                }
+            }
+        });
+    }
+
+    // Login form handler
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json().catch(() => ({}));
+                
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    hideAuthModals();
+                    initializeUserProfile();
+                    initializeApp();
+                } else {
+                    showAlert('login-alert-container', data.error || data.message || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showAlert('login-alert-container', 'An error occurred', 'error');
+            }
+        });
+    }
+    
+    // Register form handler
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (password !== confirmPassword) {
+                showAlert('register-alert-container', 'Passwords do not match', 'error');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showAlert('register-alert-container', 'Password must be at least 8 characters', 'error');
+                return;
+            }
+            
+            const formData = {
+                first_name: document.getElementById('first-name').value,
+                last_name: document.getElementById('last-name').value,
+                username: document.getElementById('username').value,
+                email: document.getElementById('register-email').value,
+                password: password
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json().catch(() => ({}));
+                
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    hideAuthModals();
+                    initializeUserProfile();
+                    initializeApp();
+                } else {
+                    showAlert('register-alert-container', data.error || data.message || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showAlert('register-alert-container', 'An error occurred', 'error');
+            }
+        });
+    }
+    
+    // Modal switching links
+    const signupLink = document.getElementById('signup-link');
+    if (signupLink) {
+        signupLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showRegisterModal();
+        });
+    }
+    
+    const signinLink = document.getElementById('signin-link');
+    if (signinLink) {
+        signinLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginModal();
+        });
     }
 }
 
 // Logout handler
-document.getElementById('logout-btn').addEventListener('click', async () => {
-    try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-            method: 'POST',
-            credentials: 'include'
+function setupPreferencesHandlers() {
+    const prefNeon = document.getElementById('pref-neon');
+    const prefReminders = document.getElementById('pref-reminders');
+    const prefInsights = document.getElementById('pref-insights');
+
+    const persistPreferences = () => {
+        const preferences = {
+            neon: prefNeon ? prefNeon.checked : true,
+            reminders: prefReminders ? prefReminders.checked : true,
+            insights: prefInsights ? prefInsights.checked : true
+        };
+        savePreferences(preferences);
+    };
+
+    [prefNeon, prefReminders, prefInsights].forEach((toggle) => {
+        toggle?.addEventListener('change', persistPreferences);
+    });
+}
+
+function setupLogoutHandler() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch(`${API_BASE_URL}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            localStorage.removeItem('user');
+            showLoginModal();
+            document.querySelector('.tracker-section').innerHTML = '';
+            document.querySelector('.analytics-section').innerHTML = '';
         });
-    } catch (error) {
-        console.error('Logout error:', error);
     }
-    
-    localStorage.removeItem('user');
-    window.location.href = '/frontend/login.html';
-});
+}
 
 // =====================
 // DATA MANAGEMENT
@@ -51,24 +313,30 @@ const HABITS_KEY = 'habitTracker_habits';
 
 class HabitTracker {
     constructor() {
-        this.habits = this.loadHabits();
+        this.habits = [];
         this.currentWeekStart = this.getWeekStart(new Date());
         this.chartInstances = {};
-        this.daysInView = 14; // Show 2 weeks
+        this.daysInView = 7;
     }
 
-    // Load habits from localStorage
-    loadHabits() {
-        const saved = localStorage.getItem(HABITS_KEY);
-        return saved ? JSON.parse(saved) : [];
+    async loadHabits() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/habits`, { credentials: 'include' });
+            const data = await response.json().catch(() => []);
+            if (Array.isArray(data)) {
+                this.habits = data;
+                localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
+            }
+        } catch (error) {
+            const saved = localStorage.getItem(HABITS_KEY);
+            this.habits = saved ? JSON.parse(saved) : [];
+        }
     }
 
-    // Save habits to localStorage
     saveHabits() {
         localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
     }
 
-    // Get week start date (Monday)
     getWeekStart(date) {
         const d = new Date(date);
         const day = d.getDay();
@@ -76,160 +344,82 @@ class HabitTracker {
         return new Date(d.setDate(diff));
     }
 
-    // Get week end date
     getWeekEnd(date) {
         const end = new Date(this.getWeekStart(date));
         end.setDate(end.getDate() + this.daysInView - 1);
         return end;
     }
 
-    // Add a new habit
-    addHabit(name) {
+    async addHabit(name) {
         if (!name.trim()) return false;
         
-        const habit = {
-            id: Date.now(),
-            name: name.trim(),
-            createdAt: new Date().toISOString(),
-            completions: {} // Format: { 'YYYY-MM-DD': true }
-        };
-        
-        this.habits.push(habit);
-        this.saveHabits();
-        return true;
-    }
-
-    // Delete a habit
-    deleteHabit(habitId) {
-        this.habits = this.habits.filter(h => h.id !== habitId);
-        this.saveHabits();
-    }
-
-    // Toggle habit completion for a specific date
-    toggleCompletion(habitId, date) {
-        const habit = this.habits.find(h => h.id === habitId);
-        if (!habit) return;
-        
-        const dateStr = date.toISOString().split('T')[0];
-        if (habit.completions[dateStr]) {
-            delete habit.completions[dateStr];
-        } else {
-            habit.completions[dateStr] = true;
+        const response = await fetch(`${API_BASE_URL}/habits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name: name.trim() })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.habit) {
+            this.habits.push(data.habit);
+            this.saveHabits();
+            return data.habit;
         }
-        
-        this.saveHabits();
+        return false;
     }
 
-    // Check if a habit is completed on a specific date
-    isCompletedOnDate(habitId, date) {
+    async deleteHabit(habitId) {
+        const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            this.habits = this.habits.filter(h => h.id !== habitId);
+            this.saveHabits();
+        }
+    }
+
+    async toggleCompletion(habitId, dateStr) {
         const habit = this.habits.find(h => h.id === habitId);
         if (!habit) return false;
         
-        const dateStr = date.toISOString().split('T')[0];
-        return !!habit.completions[dateStr];
-    }
-
-    // Get completion count for a habit in current period
-    getWeeklyCompletions(habitId) {
-        const habit = this.habits.find(h => h.id === habitId);
-        if (!habit) return 0;
-        
-        let count = 0;
-        for (let i = 0; i < this.daysInView; i++) {
-            const date = new Date(this.currentWeekStart);
-            date.setDate(date.getDate() + i);
-            if (this.isCompletedOnDate(habitId, date)) count++;
-        }
-        return count;
-    }
-
-    // Get all completions for a habit
-    getTotalCompletions(habitId) {
-        const habit = this.habits.find(h => h.id === habitId);
-        if (!habit) return 0;
-        return Object.keys(habit.completions).length;
-    }
-
-    // Get completion rate for a habit
-    getCompletionRate(habitId) {
-        if (this.habits.length === 0) return 0;
-        const habit = this.habits.find(h => h.id === habitId);
-        if (!habit) return 0;
-        
-        const createdAt = new Date(habit.createdAt);
-        const today = new Date();
-        const daysAvailable = Math.ceil((today - createdAt) / (1000 * 60 * 60 * 24)) + 1;
-        const completions = this.getTotalCompletions(habitId);
-        
-        return Math.round((completions / daysAvailable) * 100);
-    }
-
-    // Get completion data for last N days
-    getCompletionTrend(habitId, days = 7) {
-        const habit = this.habits.find(h => h.id === habitId);
-        if (!habit) return [];
-        
-        const trend = [];
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            trend.push(this.isCompletedOnDate(habitId, date) ? 1 : 0);
-        }
-        return trend;
-    }
-
-    // Get statistics
-    getStatistics() {
-        if (this.habits.length === 0) {
-            return {
-                totalCompletions: 0,
-                averageRate: 0,
-                bestHabit: null,
-                currentStreak: 0
-            };
-        }
-
-        const totalCompletions = this.habits.reduce((sum, habit) => 
-            sum + this.getTotalCompletions(habit.id), 0);
-        
-        const averageRate = Math.round(
-            this.habits.reduce((sum, habit) => 
-                sum + this.getCompletionRate(habit.id), 0) / this.habits.length
-        );
-
-        const bestHabit = this.habits.reduce((best, habit) => {
-            const rate = this.getCompletionRate(habit.id);
-            return !best || rate > this.getCompletionRate(best.id) ? habit : best;
+        const response = await fetch(`${API_BASE_URL}/habits/${habitId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ date: `${dateStr}` })
         });
-
-        const currentStreak = this.calculateStreak();
-
-        return {
-            totalCompletions,
-            averageRate,
-            bestHabit: bestHabit ? bestHabit.name : null,
-            currentStreak
-        };
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+            const completion = data.completion || {};
+            const exists = habit.completions.some(item => item.date === completion.date);
+            if (exists) {
+                habit.completions = habit.completions.filter(item => item.date !== completion.date);
+            }
+            if (completion.completed !== false) {
+                habit.completions.push(completion);
+            }
+            this.saveHabits();
+            return completion.completed;
+        }
+        return false;
     }
 
-    // Calculate current streak
-    calculateStreak() {
-        if (this.habits.length === 0) return 0;
-
+    getStreak(habitId) {
+        const habit = this.habits.find(h => h.id === habitId);
+        if (!habit) return 0;
+        
         let streak = 0;
         const today = new Date();
         
         for (let i = 0; i < 365; i++) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
             
-            const allCompleted = this.habits.every(habit => 
-                this.isCompletedOnDate(habit.id, date)
-            );
-            
-            if (allCompleted) {
+            if (habit.completions[dateStr]) {
                 streak++;
-            } else {
+            } else if (i > 0) {
                 break;
             }
         }
@@ -237,473 +427,438 @@ class HabitTracker {
         return streak;
     }
 
-    // Get contribution data for last 12 weeks
-    getContributionData() {
-        const weeks = [];
+    getCompletionRate(habitId) {
+        const habit = this.habits.find(h => h.id === habitId);
+        if (!habit) return 0;
+        
         const today = new Date();
+        const createdDate = new Date(habit.created_at || habit.createdAt || new Date());
+        const daysPassed = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24)) + 1;
+        const completedDays = (habit.completions || []).filter(item => item.completed).length;
         
-        for (let week = 11; week >= 0; week--) {
-            const weekData = [];
-            for (let day = 0; day < 7; day++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - (week * 7 + day));
-                
-                const completedCount = this.habits.filter(habit => 
-                    this.isCompletedOnDate(habit.id, date)
-                ).length;
-                
-                const completionRate = this.habits.length > 0 
-                    ? Math.round((completedCount / this.habits.length) * 100)
-                    : 0;
-                
-                weekData.push({
-                    date: date.toISOString().split('T')[0],
-                    completions: completedCount,
-                    rate: completionRate
-                });
-            }
-            weeks.push(weekData);
-        }
-        
-        return weeks;
-    }
-
-    // Get chart data
-    getChartData() {
-        const habits = this.habits.slice(0, 10); // Limit to 10 habits for charts
-
-        // Pie chart data (completion rates)
-        const pieData = {
-            labels: habits.map(h => h.name),
-            datasets: [{
-                data: habits.map(h => this.getCompletionRate(h.id)),
-                backgroundColor: [
-                    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
-                    '#f97316', '#eab308', '#84cc16', '#22c55e',
-                    '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9'
-                ],
-                borderColor: '#ffffff',
-                borderWidth: 2
-            }]
-        };
-
-        // Line chart data (weekly trends)
-        const lineData = {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: habits.map((habit, index) => ({
-                label: habit.name,
-                data: this.getCompletionTrend(habit.id, 7),
-                borderColor: pieData.datasets[0].backgroundColor[index],
-                backgroundColor: pieData.datasets[0].backgroundColor[index] + '20',
-                tension: 0.4,
-                fill: true
-            }))
-        };
-
-        // Bar chart data (total completions)
-        const barData = {
-            labels: habits.map(h => h.name),
-            datasets: [{
-                label: 'Total Completions',
-                data: habits.map(h => this.getTotalCompletions(h.id)),
-                backgroundColor: habits.map((_, i) => pieData.datasets[0].backgroundColor[i]),
-                borderColor: '#ffffff',
-                borderWidth: 2
-            }]
-        };
-
-        return { pieData, lineData, barData };
+        return Math.round((completedDays / daysPassed) * 100);
     }
 }
 
 // =====================
-// UI MANAGEMENT
+// UI INITIALIZATION
 // =====================
 
-const tracker = new HabitTracker();
+let tracker;
 
-// Initialize charts on page load
-window.addEventListener('load', () => {
+async function initializeApp() {
+    const user = checkAuth();
+    if (!user) return;
+    
     initializeUserProfile();
+    
+    tracker = new HabitTracker();
+    await tracker.loadHabits();
+    
+    renderCalendarHeader();
     renderHabits();
-    updateWeekDisplay();
     renderCharts();
-    loadSocialPlatforms();
-});
+    setupEventListeners();
+}
 
-// Render habits calendar
-function renderHabits() {
-    // Render day headers
-    const headerContainer = document.getElementById('calendar-days-header');
-    headerContainer.innerHTML = '';
+function renderCalendarHeader() {
+    const header = document.getElementById('calendar-days-header');
+    if (!header || !tracker) return;
+    
+    header.innerHTML = '';
+    const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
     
     for (let i = 0; i < tracker.daysInView; i++) {
-        const date = new Date(tracker.currentWeekStart);
+        const date = new Date(weekStart);
         date.setDate(date.getDate() + i);
         
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-        const dayDate = date.getDate();
+        const dateStr = date.toISOString().split('T')[0];
+        const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayOfMonth = date.getDate();
         
-        const headerCell = document.createElement('div');
-        headerCell.className = 'day-header-cell';
-        headerCell.innerHTML = `
-            <div class="day-name">${dayName}</div>
-            <div class="day-date">${dayDate}</div>
-        `;
-        headerContainer.appendChild(headerCell);
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day-header';
+        dayDiv.innerHTML = `<span>${dayOfWeek}</span><span>${dayOfMonth}</span>`;
+        header.appendChild(dayDiv);
     }
     
-    // Render habit rows
-    const bodyContainer = document.getElementById('calendar-body');
-    bodyContainer.innerHTML = '';
+    updateWeekDisplay();
+}
+
+function updateWeekDisplay() {
+    const display = document.getElementById('week-display');
+    if (!display || !tracker) return;
+    
+    const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
+    const weekEnd = tracker.getWeekEnd(tracker.currentWeekStart || new Date());
+    
+    const startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+    display.textContent = `Week of ${startStr} - ${endStr}`;
+}
+
+function renderHabits() {
+    const body = document.getElementById('calendar-body');
+    if (!body) return;
+    
+    body.innerHTML = '';
     
     if (tracker.habits.length === 0) {
-        const emptyRow = document.createElement('div');
-        emptyRow.style.padding = '2rem';
-        emptyRow.style.textAlign = 'center';
-        emptyRow.style.color = '#999';
-        emptyRow.textContent = 'No habits yet. Add one to get started!';
-        bodyContainer.appendChild(emptyRow);
+        body.innerHTML = '<div class="empty-state">No habits yet. Add one to get started!</div>';
         return;
     }
     
     tracker.habits.forEach(habit => {
-        const row = document.createElement('div');
-        row.className = 'habit-row';
+        const habitRow = document.createElement('div');
+        habitRow.className = 'habit-row';
         
-        // Habit label (left side)
-        const label = document.createElement('div');
-        label.className = 'habit-row-label';
-        label.title = `Click to edit: ${habit.name}`;
-        label.onclick = () => editHabit(habit.id);
-        label.innerHTML = `
-            <span class="habit-name">${habit.name}</span>
+        const habitLabel = document.createElement('div');
+        habitLabel.className = 'habit-label';
+        
+        const habitName = document.createElement('span');
+        habitName.className = 'habit-name';
+        habitName.textContent = habit.name;
+        
+        const habitStats = document.createElement('div');
+        habitStats.className = 'habit-stats';
+        
+        const streak = tracker.getStreak(habit.id);
+        const rate = tracker.getCompletionRate(habit.id);
+        
+        habitStats.innerHTML = `
+            <span class="stat">🔥 ${streak}</span>
+            <span class="stat">${rate}%</span>
         `;
         
-        // Habit cells (checkboxes)
-        const cellsContainer = document.createElement('div');
-        cellsContainer.className = 'habit-row-cells';
-        
-        for (let i = 0; i < tracker.daysInView; i++) {
-            const date = new Date(tracker.currentWeekStart);
-            date.setDate(date.getDate() + i);
-            const dateStr = date.toISOString().split('T')[0];
-            const isCompleted = tracker.isCompletedOnDate(habit.id, date);
-            
-            const cell = document.createElement('div');
-            cell.className = 'habit-cell';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.dataset.habitId = habit.id;
-            checkbox.dataset.date = dateStr;
-            checkbox.checked = isCompleted;
-            
-            checkbox.addEventListener('change', (e) => {
-                const habitId = parseInt(e.target.dataset.habitId);
-                const date = new Date(e.target.dataset.date);
-                tracker.toggleCompletion(habitId, date);
-                renderHabits();
-            });
-            
-            cell.appendChild(checkbox);
-            cellsContainer.appendChild(cell);
-        }
-        
-        // Action buttons (right side)
-        const actions = document.createElement('div');
-        actions.className = 'habit-row-actions';
-        
-        const editBtn = document.createElement('button');
-        editBtn.className = 'habit-action-btn';
-        editBtn.textContent = '✎';
-        editBtn.title = 'Edit';
-        editBtn.onclick = () => editHabit(habit.id);
-        
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'habit-action-btn delete';
-        deleteBtn.textContent = '✕';
-        deleteBtn.title = 'Delete';
+        deleteBtn.className = 'btn-delete';
+        deleteBtn.textContent = '×';
         deleteBtn.onclick = () => {
-            if (confirm(`Delete "${habit.name}"?`)) {
-                tracker.deleteHabit(habit.id);
-                renderHabits();
+            if (confirm('Delete this habit?')) {
+                tracker.deleteHabit(habit.id).then(() => {
+                    renderHabits();
+                    renderCharts();
+                });
             }
         };
         
-        actions.appendChild(editBtn);
-        actions.appendChild(deleteBtn);
+        habitLabel.appendChild(habitName);
+        habitLabel.appendChild(habitStats);
+        habitLabel.appendChild(deleteBtn);
         
-        row.appendChild(label);
-        row.appendChild(cellsContainer);
-        row.appendChild(actions);
-        bodyContainer.appendChild(row);
-    });
-}
+        const habitsCheckboxes = document.createElement('div');
+        habitsCheckboxes.className = 'habit-checkboxes';
+        
+        const weekStart = tracker.getWeekStart(tracker.currentWeekStart || new Date());
+        
+        for (let i = 0; i < tracker.daysInView; i++) {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'habit-checkbox';
+            const completed = (habit.completions || []).some(item => item.date === dateStr && item.completed);
+            checkbox.checked = completed;
 
-// Update week display
-function updateWeekDisplay() {
-    const start = tracker.currentWeekStart;
-    const end = tracker.getWeekEnd(start);
-    
-    const options = { month: 'short', day: 'numeric' };
-    const startStr = start.toLocaleDateString('en-US', options);
-    const endStr = end.toLocaleDateString('en-US', options);
-    
-    document.getElementById('week-display').textContent = `${startStr} - ${endStr}`;
-}
+            // Optimistic toggle handler: update UI immediately, then sync with server
+            checkbox.addEventListener('change', async (e) => {
+                const checked = e.target.checked;
+                if (!habit.completions) habit.completions = [];
 
-// Add habit
-document.getElementById('add-habit-btn').addEventListener('click', () => {
-    const input = document.getElementById('habit-input');
-    if (tracker.addHabit(input.value)) {
-        input.value = '';
-        renderHabits();
-    }
-});
-
-document.getElementById('habit-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        document.getElementById('add-habit-btn').click();
-    }
-});
-
-// Week navigation
-document.getElementById('prev-week').addEventListener('click', () => {
-    tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() - tracker.daysInView);
-    updateWeekDisplay();
-    renderHabits();
-});
-
-document.getElementById('next-week').addEventListener('click', () => {
-    tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() + tracker.daysInView);
-    updateWeekDisplay();
-    renderHabits();
-});
-
-// Modal management
-let editingHabitId = null;
-const modal = document.getElementById('edit-modal');
-const closeBtn = document.querySelector('.close');
-
-function editHabit(habitId) {
-    editingHabitId = habitId;
-    const habit = tracker.habits.find(h => h.id === habitId);
-    if (habit) {
-        document.getElementById('edit-habit-input').value = habit.name;
-        modal.classList.add('active');
-    }
-}
-
-closeBtn.addEventListener('click', () => {
-    modal.classList.remove('active');
-});
-
-document.getElementById('cancel-habit-btn').addEventListener('click', () => {
-    modal.classList.remove('active');
-});
-
-document.getElementById('save-habit-btn').addEventListener('click', () => {
-    const newName = document.getElementById('edit-habit-input').value;
-    if (newName.trim()) {
-        const habit = tracker.habits.find(h => h.id === editingHabitId);
-        if (habit) {
-            habit.name = newName.trim();
-            tracker.saveHabits();
-            renderHabits();
-            modal.classList.remove('active');
-        }
-    }
-});
-
-document.getElementById('delete-habit-btn').addEventListener('click', () => {
-    if (confirm('Are you sure you want to delete this habit?')) {
-        tracker.deleteHabit(editingHabitId);
-        renderHabits();
-        modal.classList.remove('active');
-    }
-});
-
-// Render charts
-function renderCharts() {
-    const { pieData, lineData, barData } = tracker.getChartData();
-
-    // Destroy existing charts
-    Object.values(tracker.chartInstances).forEach(chart => {
-        if (chart) chart.destroy();
-    });
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'bottom'
-            }
-        }
-    };
-
-    // Pie Chart
-    const pieCtx = document.getElementById('pie-chart');
-    if (pieCtx) {
-        tracker.chartInstances.pie = new Chart(pieCtx, {
-            type: 'doughnut',
-            data: pieData,
-            options: chartOptions
-        });
-    }
-
-    // Line Chart
-    const lineCtx = document.getElementById('line-chart');
-    if (lineCtx) {
-        tracker.chartInstances.line = new Chart(lineCtx, {
-            type: 'line',
-            data: lineData,
-            options: {
-                ...chartOptions,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 1
+                // apply optimistic change locally
+                if (checked) {
+                    if (!habit.completions.some(item => item.date === dateStr)) {
+                        habit.completions.push({ date: dateStr, completed: true });
                     }
+                } else {
+                    habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                }
+                tracker.saveHabits();
+
+                // disable while syncing
+                checkbox.disabled = true;
+                try {
+                    const ok = await tracker.toggleCompletion(habit.id, dateStr);
+                    if (ok === false) {
+                        // server returned failure; revert optimistic
+                        if (checked) {
+                            habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                        } else {
+                            habit.completions.push({ date: dateStr, completed: true });
+                        }
+                        tracker.saveHabits();
+                    }
+                } catch (err) {
+                    // revert on error
+                    if (checked) {
+                        habit.completions = habit.completions.filter(item => item.date !== dateStr);
+                    } else {
+                        habit.completions.push({ date: dateStr, completed: true });
+                    }
+                    tracker.saveHabits();
+                } finally {
+                    checkbox.disabled = false;
+                    renderHabits();
+                    renderCharts();
+                }
+            });
+
+            const label = document.createElement('label');
+            label.className = 'checkbox-label';
+            label.appendChild(checkbox);
+            habitsCheckboxes.appendChild(label);
+        }
+        
+        habitRow.appendChild(habitLabel);
+        habitRow.appendChild(habitsCheckboxes);
+        body.appendChild(habitRow);
+    });
+}
+
+function renderCharts() {
+    if (tracker.habits.length === 0) return;
+    
+    renderPieChart();
+    renderLineChart();
+    renderBarChart();
+}
+
+function renderPieChart() {
+    const ctx = document.getElementById('pie-chart');
+    if (!ctx) return;
+    
+    const completed = tracker.habits.map(h => tracker.getCompletionRate(h.id));
+    const avg = completed.reduce((a, b) => a + b, 0) / completed.length;
+    
+    if (tracker.chartInstances.pie) {
+        tracker.chartInstances.pie.destroy();
+    }
+    
+    tracker.chartInstances.pie = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Pending'],
+            datasets: [{
+                data: [Math.round(avg), 100 - Math.round(avg)],
+                backgroundColor: ['#00D084', '#E0E0E0'],
+                borderColor: ['#00D084', '#E0E0E0']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
                 }
             }
-        });
-    }
-
-    // Bar Chart
-    const barCtx = document.getElementById('bar-chart');
-    if (barCtx) {
-        tracker.chartInstances.bar = new Chart(barCtx, {
-            type: 'bar',
-            data: barData,
-            options: chartOptions
-        });
-    }
-
-    // Contribution table
-    renderContributionTable();
-
-    // Statistics
-    const stats = tracker.getStatistics();
-    document.getElementById('total-completions').textContent = stats.totalCompletions;
-    document.getElementById('avg-completion').textContent = stats.averageRate + '%';
-    document.getElementById('best-habit').textContent = stats.bestHabit || '-';
-    document.getElementById('current-streak').textContent = stats.currentStreak;
+        }
+    });
 }
 
-// Render contribution table
-function renderContributionTable() {
-    const container = document.getElementById('contribution-table');
-    container.innerHTML = '';
-
-    const weeks = tracker.getContributionData();
+function renderLineChart() {
+    const ctx = document.getElementById('line-chart');
+    if (!ctx) return;
     
-    // Create header with day labels
-    const header = document.createElement('div');
-    header.style.marginBottom = '1rem';
-    header.innerHTML = '<strong>Last 12 Weeks Activity:</strong>';
-    container.appendChild(header);
+    const labels = [];
+    const datasets = [];
+    const daysBack = tracker.daysInView - 1;
 
-    // Create grid
-    const grid = document.createElement('div');
-    grid.className = 'contribution-grid';
-
-    weeks.forEach((weekDays) => {
-        weekDays.forEach(day => {
-            const cell = document.createElement('div');
-            cell.className = 'contribution-cell';
-            
-            // Determine level based on completion rate
-            let level = 0;
-            if (day.rate > 0) level = 1;
-            if (day.rate > 25) level = 2;
-            if (day.rate > 50) level = 3;
-            if (day.rate > 75) level = 4;
-            
-            cell.classList.add(`level-${level}`);
-            cell.textContent = '';
-            cell.title = `${day.date}: ${day.completions} completions (${day.rate}%)`;
-            
-            grid.appendChild(cell);
+    for (let i = daysBack; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+    
+    tracker.habits.forEach((habit, idx) => {
+        const colors = ['#00D084', '#667eea', '#FF6B6B', '#F9A826', '#4ECDC4', '#C77DFF'];
+        const data = [];
+        
+        for (let i = daysBack; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const completed = (habit.completions || []).some(item => item.date === dateStr && item.completed);
+            data.push(completed ? 1 : 0);
+        }
+        
+        datasets.push({
+            label: habit.name,
+            data: data,
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length] + '20',
+            tension: 0.4,
+            fill: true
         });
     });
+    
+    if (tracker.chartInstances.line) {
+        tracker.chartInstances.line.destroy();
+    }
+    
+    tracker.chartInstances.line = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1
+                }
+            }
+        }
+    });
+}
 
-    container.appendChild(grid);
+function renderBarChart() {
+    const ctx = document.getElementById('bar-chart');
+    if (!ctx) return;
+    
+    const labels = tracker.habits.map(h => h.name);
+    const data = tracker.habits.map(h => tracker.getCompletionRate(h.id));
+    
+    if (tracker.chartInstances.bar) {
+        tracker.chartInstances.bar.destroy();
+    }
+    
+    tracker.chartInstances.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Completion Rate (%)',
+                data,
+                backgroundColor: '#00D084',
+                borderColor: '#00A366',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
 }
 
 // =====================
-// SOCIAL SHARING
+// EVENT LISTENERS
 // =====================
 
-async function loadSocialPlatforms() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/social/platforms`);
-        const platforms = await response.json();
-        
-        const platformsContainer = document.getElementById('social-platforms');
-        platformsContainer.innerHTML = '';
-        
-        platforms.forEach(platform => {
-            const button = document.createElement('button');
-            button.className = `social-btn ${platform.id}`;
-            button.innerHTML = `
-                <span class="social-btn-icon">${platform.icon}</span>
-                <span>${platform.name}</span>
-            `;
-            
-            button.addEventListener('click', () => shareHabit(platform.id));
-            platformsContainer.appendChild(button);
+function setupEventListeners() {
+    const addBtn = document.getElementById('add-habit-btn');
+    const habitInput = document.getElementById('habit-input');
+    
+    if (addBtn && habitInput) {
+        addBtn.addEventListener('click', async () => {
+            if (!tracker) {
+                showAlert('login-alert-container', 'Please sign in before adding habits.', 'error');
+                return;
+            }
+
+            const name = habitInput.value.trim();
+            if (!name) {
+                showAlert('login-alert-container', 'Please enter a habit name.', 'error');
+                return;
+            }
+
+            const added = await tracker.addHabit(name);
+            if (!added) {
+                showAlert('login-alert-container', 'Unable to add habit. Please try again.', 'error');
+                return;
+            }
+
+            habitInput.value = '';
+            renderCalendarHeader();
+            renderHabits();
+            renderCharts();
         });
-    } catch (error) {
-        console.error('Error loading social platforms:', error);
+        
+        habitInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addBtn.click();
+            }
+        });
+    }
+    
+    const prevWeekBtn = document.getElementById('prev-week');
+    const nextWeekBtn = document.getElementById('next-week');
+    
+    if (prevWeekBtn) {
+        prevWeekBtn.addEventListener('click', () => {
+            tracker.currentWeekStart = new Date(tracker.currentWeekStart || new Date());
+            tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() - 7);
+            renderCalendarHeader();
+            renderHabits();
+        });
+    }
+    
+    if (nextWeekBtn) {
+        nextWeekBtn.addEventListener('click', () => {
+            tracker.currentWeekStart = new Date(tracker.currentWeekStart || new Date());
+            tracker.currentWeekStart.setDate(tracker.currentWeekStart.getDate() + 7);
+            renderCalendarHeader();
+            renderHabits();
+        });
+    }
+    
+    const trackerLink = document.getElementById('tracker-link');
+    const analyticsLink = document.getElementById('analytics-link');
+    const profileLink = document.getElementById('profile-link');
+    const trackerSection = document.querySelector('.tracker-section');
+    const analyticsSection = document.querySelector('.analytics-section');
+    const profileSection = document.querySelector('.profile-section');
+
+    const setActiveSection = (activeLink) => {
+        [trackerLink, analyticsLink, profileLink].forEach((link) => {
+            link?.classList.toggle('active', link === activeLink);
+        });
+
+        if (trackerSection) trackerSection.style.display = activeLink === trackerLink ? 'flex' : 'none';
+        if (analyticsSection) analyticsSection.style.display = activeLink === analyticsLink ? 'flex' : 'none';
+        if (profileSection) profileSection.style.display = activeLink === profileLink ? 'flex' : 'none';
+    };
+    
+    if (trackerLink) {
+        trackerLink.addEventListener('click', () => setActiveSection(trackerLink));
+    }
+    
+    if (analyticsLink) {
+        analyticsLink.addEventListener('click', () => setActiveSection(analyticsLink));
+    }
+
+    if (profileLink) {
+        profileLink.addEventListener('click', () => setActiveSection(profileLink));
     }
 }
 
-function shareHabit(platform) {
-    // Get best habit
-    const stats = tracker.getStatistics();
-    
-    if (!stats.bestHabit) {
-        alert('No habits to share yet. Create a habit first!');
-        return;
-    }
-    
-    // Find the best habit object
-    const bestHabit = tracker.habits.find(h => h.name === stats.bestHabit);
-    if (!bestHabit) return;
-    
-    // For now, generate share message directly
-    const completionData = {
-        completion_rate: tracker.getCompletionRate(bestHabit.id),
-        total_completions: tracker.getTotalCompletions(bestHabit.id)
-    };
-    
-    const messages = {
-        'twitter': `I just tracked "${bestHabit.name}"! 🎯 ${completionData.completion_rate}% completion rate on #HabitTrack`,
-        'facebook': `Tracking my progress on '${bestHabit.name}' using #HabitTrack! Currently at ${completionData.completion_rate}% completion rate. Building better habits! 💪`,
-        'linkedin': `I'm building better habits with #HabitTrack! Currently tracking '${bestHabit.name}' with a ${completionData.completion_rate}% completion rate. Consistency is key! 📈`,
-        'reddit': `Just tracked '${bestHabit.name}' using HabitTrack! ${completionData.total_completions} completions and ${completionData.completion_rate}% completion rate. Great app for habit tracking! 🎯`,
-        'whatsapp': `Check out my habit tracking! '${bestHabit.name}': ${completionData.completion_rate}% completion rate 📊 #HabitTrack`,
-        'telegram': `📊 Habit Update: ${bestHabit.name}\\nCompletion Rate: ${completionData.completion_rate}%\\nTotal: ${completionData.total_completions}\\n#HabitTrack`
-    };
-    
-    const message = messages[platform] || `Tracking '${bestHabit.name}' on #HabitTrack`;
-    const urls = {
-        'twitter': `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`,
-        'facebook': `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(message)}`,
-        'linkedin': `https://www.linkedin.com/sharing/share-offsite/?url=${window.location.href}`,
-        'reddit': `https://reddit.com/submit?title=${encodeURIComponent(bestHabit.name)}&text=${encodeURIComponent(message)}`,
-        'whatsapp': `https://wa.me/?text=${encodeURIComponent(message)}`,
-        'telegram': `https://t.me/share/url?url=${window.location.href}&text=${encodeURIComponent(message)}`
-    };
-    
-    if (urls[platform]) {
-        window.open(urls[platform], '_blank', 'width=600,height=400');
-    }
-}
+// =====================
+// INITIALIZATION
+// =====================
 
-// Initialize app
-updateWeekDisplay();
-renderHabits();
+document.addEventListener('DOMContentLoaded', () => {
+    setupAuthHandlers();
+    setupPreferencesHandlers();
+    setupLogoutHandler();
+    applyPreferences();
+    checkAuth();
+    initializeApp();
+});

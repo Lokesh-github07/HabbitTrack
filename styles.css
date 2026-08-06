@@ -731,6 +731,17 @@ input[type="checkbox"]:checked::before {
     min-width: 0;
 }
 
+/* app.js toggles sections with style.display = 'flex' (not 'block'),
+   so every section needs an explicit column direction or its children
+   (header + content) end up side-by-side in a row instead of stacked. */
+.tracker-section,
+.analytics-section,
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
 .section-header {
     display: flex;
     align-items: center;
