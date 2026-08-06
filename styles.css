@@ -1684,13 +1684,13 @@ body::after {
 
 .habit-row {
     display: flex;
-    border-bottom: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-    align-items: stretch;
+    align-items: center;
+    min-height: 60px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .habit-row:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(103, 232, 249, 0.05);
 }
 
 .habit-row:last-child {
@@ -1698,21 +1698,13 @@ body::after {
 }
 
 .habit-row-label {
-    flex: 0 0 220px;
-    min-width: 220px;
-    padding: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    width: 280px;
+    min-width: 280px;
+    padding: 0 16px;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    border-right: 2px solid var(--border-color);
-    background-color: transparent;
     cursor: pointer;
-    transition: all 0.3s ease;
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .habit-row-label:hover {
@@ -1721,27 +1713,35 @@ body::after {
 }
 
 .habit-name {
-    flex: 1;
-    min-width: 0;
+    display: block;
+    width: 100%;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    word-break: normal;
+    overflow-wrap: normal;
+    writing-mode: horizontal-tb;
 }
 
 .habit-row-cells {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(14, minmax(0, 1fr));
-    gap: 0;
+    grid-template-columns: repeat(14, 1fr);
 }
 
 .habit-cell {
-    padding: 0.75rem 0.5rem;
     display: flex;
-    align-items: center;
     justify-content: center;
-    border-right: 1px solid var(--border-color);
+    align-items: center;
+    min-height: 60px;
+
     background: transparent;
-    min-width: 0;
+    border-left: 1px solid rgba(255,255,255,0.08);
 }
 
 .habit-cell:last-child {
@@ -1749,18 +1749,9 @@ body::after {
 }
 
 .habit-cell input[type="checkbox"] {
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 18px;
+    height: 18px;
     cursor: pointer;
-    accent-color: var(--primary-green);
-    transition: all 0.2s ease;
-    appearance: none;
-    -webkit-appearance: none;
-    background-color: #ffffff;
-    border: 2px solid var(--border-color);
-    border-radius: 0.25rem;
-    margin: 0;
-    display: block;
 }
 
 .habit-cell input[type="checkbox"]:hover {
