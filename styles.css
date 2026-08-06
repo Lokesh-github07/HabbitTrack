@@ -1690,7 +1690,7 @@ body::after {
 }
 
 .habit-row:hover {
-    background-color: #f3f4f6;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .habit-row:last-child {
@@ -1740,7 +1740,7 @@ body::after {
     align-items: center;
     justify-content: center;
     border-right: 1px solid var(--border-color);
-    background-color: #ffffff;
+    background: transparent;
     min-width: 0;
 }
 
