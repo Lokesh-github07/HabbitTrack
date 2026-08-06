@@ -1009,6 +1009,8 @@ body::after {
     display: flex;
     border-bottom: 1px solid var(--border-color);
     transition: var(--transition);
+    min-height: auto;       /* Let row height grow based on content */
+    padding: 8px 0;         /* Add some top/bottom padding so text doesn't touch lines */
 }
 
 .habit-row:hover {
@@ -1022,13 +1024,19 @@ body::after {
     align-items: center;
     gap: 0.5rem;
     border-right: 1px solid var(--border-color);
-    min-height: 70px;
+    min-height: 70px;       /* This is a fallback, but row height auto will handle */
 }
 
 .habit-name {
     flex: 1;
     font-weight: 600;
     color: var(--text-primary);
+    white-space: normal;    /* Allow text to wrap */
+    word-break: break-word; /* Break long words if necessary */
+    overflow-wrap: break-word;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.4;       /* Make multiline text readable */
 }
 
 .habit-stats {
@@ -1685,7 +1693,8 @@ body::after {
 .habit-row {
     display: flex;
     align-items: center;
-    min-height: 60px;
+    min-height: auto;       /* REMOVED 60px so row can grow for text */
+    padding: 12px 0;        /* ADDED vertical padding */
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -1699,12 +1708,12 @@ body::after {
 
 .habit-row-label {
     width: 280px;
-    min-width: 280px;
-    padding: 0 16px;
+    min-width: 260px;       /* Adjusted width to fit text */
+    padding: 0 18px;        /* Added padding so text doesn't touch borders */
     display: flex;
     align-items: center;
     cursor: pointer;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .habit-row-label:hover {
@@ -1718,14 +1727,12 @@ body::after {
     font-size: 14px;
     font-weight: 600;
     color: #ffffff;
-
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    word-break: normal;
-    overflow-wrap: normal;
-    writing-mode: horizontal-tb;
+    white-space: normal;        /* Allow multiline wrapping */
+    word-break: break-word;     /* Break long words */
+    overflow-wrap: break-word;  /* Break correctly */
+    overflow: visible;          /* Don't hide text */
+    text-overflow: unset;       /* Remove the ... */
+    line-height: 1.4;           /* Readable line height */
 }
 
 .habit-row-cells {
@@ -1738,8 +1745,7 @@ body::after {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 60px;
-
+    min-height: 60px;           /* Keep checkboxes aligned perfectly */
     background: transparent;
     border-left: 1px solid rgba(255,255,255,0.08);
 }
