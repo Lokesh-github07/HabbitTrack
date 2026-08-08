@@ -49,6 +49,26 @@ function checkAuth() {
     return JSON.parse(user);
 }
 
+async function verifySession() {
+    // localStorage only reflects the last successful login on THIS browser.
+    // It says nothing about whether the backend session/cookie is still valid
+    // (e.g. after a container restart, DB outage, or cookie expiry). Confirm
+    // with the server before trusting it, otherwise we silently render an
+    // empty dashboard when every API call is actually failing with 401.
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/current-user`, { credentials: 'include' });
+        if (!response.ok) {
+            localStorage.removeItem('user');
+            showLoginModal();
+            return false;
+        }
+        return true;
+    } catch (error) {
+        showAlert('login-alert-container', 'Could not reach the server. Check that the backend/database is running.', 'error');
+        return false;
+    }
+}
+
 function initializeUserProfile() {
     const user = localStorage.getItem('user');
     if (!user) return;
@@ -320,18 +340,29 @@ class HabitTracker {
     }
 
     async loadHabits() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/habits`, { credentials: 'include' });
-            const data = await response.json().catch(() => []);
-            if (Array.isArray(data)) {
-                this.habits = data;
-                localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
-            }
-        } catch (error) {
-            const saved = localStorage.getItem(HABITS_KEY);
-            this.habits = saved ? JSON.parse(saved) : [];
+    try {
+        const response = await fetch(`${API_BASE_URL}/habits`, { credentials: 'include' });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && Array.isArray(data)) {
+            this.habits = data;
+            localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
+            return;
         }
+
+        // Non-2xx response (e.g. 500 from a broken DB connection, or 401
+        // from an expired session) — don't pretend the habit list is
+        // empty, tell the user what actually went wrong.
+        const message = (data && data.error) || `Failed to load habits (HTTP ${response.status})`;
+        showAlert('login-alert-container', message, 'error');
+        const saved = localStorage.getItem(HABITS_KEY);
+        this.habits = saved ? JSON.parse(saved) : [];
+    } catch (error) {
+        showAlert('login-alert-container', 'Could not reach the server to load habits. Check that the backend/database is running.', 'error');
+        const saved = localStorage.getItem(HABITS_KEY);
+        this.habits = saved ? JSON.parse(saved) : [];
     }
+}
 
     saveHabits() {
         localStorage.setItem(HABITS_KEY, JSON.stringify(this.habits));
@@ -449,6 +480,9 @@ let tracker;
 async function initializeApp() {
     const user = checkAuth();
     if (!user) return;
+
+    const sessionValid = await verifySession();
+    if (!sessionValid) return;
     
     initializeUserProfile();
     
