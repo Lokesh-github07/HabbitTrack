@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HabitTrack - Habit Tracking Made Easy</title>
+    <title>Progressly - Habit &amp; Task Tracking</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
@@ -14,7 +14,7 @@
         <div class="auth-modal-content">
             <div class="auth-modal-form">
                 <div class="logo-section">
-                    <h1>HabitTrack</h1>
+                    <h1>Progressly</h1>
                     <p>Build better habits, one day at a time</p>
                 </div>
 
@@ -59,14 +59,14 @@
 
             <div class="auth-modal-illustration">
                 <div class="illustration-content">
-                    <h3>🚀</h3>
+                    <h3>&#128640;</h3>
                     <h3>Transform Your Life</h3>
                     <p>Track your daily habits and build a better version of yourself</p>
                     <div class="feature-list">
-                        <div class="feature-item">✓ Daily habit tracking</div>
-                        <div class="feature-item">✓ Progress analytics</div>
-                        <div class="feature-item">✓ Streak counts</div>
-                        <div class="feature-item">✓ Social sharing</div>
+                        <div class="feature-item">&#10003; Daily habit tracking</div>
+                        <div class="feature-item">&#10003; Progress analytics</div>
+                        <div class="feature-item">&#10003; Streak counts</div>
+                        <div class="feature-item">&#10003; Task management</div>
                     </div>
                 </div>
             </div>
@@ -79,7 +79,7 @@
         <div class="auth-modal-content">
             <div class="auth-modal-form">
                 <div class="logo-section">
-                    <h1>HabitTrack</h1>
+                    <h1>Progressly</h1>
                     <p>Build better habits, one day at a time</p>
                 </div>
 
@@ -145,14 +145,14 @@
 
             <div class="auth-modal-illustration">
                 <div class="illustration-content">
-                    <h3>🎯</h3>
+                    <h3>&#127919;</h3>
                     <h3>Achieve Your Goals</h3>
                     <p>Start your habit-building journey today and transform your life</p>
                     <div class="feature-list">
-                        <div class="feature-item">✓ Easy to use interface</div>
-                        <div class="feature-item">✓ Track multiple habits</div>
-                        <div class="feature-item">✓ Detailed insights</div>
-                        <div class="feature-item">✓ Share achievements</div>
+                        <div class="feature-item">&#10003; Easy to use interface</div>
+                        <div class="feature-item">&#10003; Track multiple habits</div>
+                        <div class="feature-item">&#10003; Detailed insights</div>
+                        <div class="feature-item">&#10003; Stay accountable</div>
                     </div>
                 </div>
             </div>
@@ -164,61 +164,202 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <h1>HabitTrack</h1>
-                <p>Build better habits</p>
+                <div class="logo-badge">P</div>
+                <h1>Progressly</h1>
             </div>
-            
+
             <nav class="nav-menu">
-                <div class="user-profile">
-                    <div class="user-avatar" id="user-avatar">U</div>
-                    <div class="user-info">
-                        <p class="user-name" id="user-name">User</p>
-                        <p class="user-email" id="user-email">user@email.com</p>
-                    </div>
-                </div>
-                
-                <div class="nav-divider"></div>
-                
-                <button class="nav-link active" id="tracker-link">
-                    <span class="icon">📊</span>
-                    <span>Tracker</span>
+                <button class="nav-link active" id="dashboard-link">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></span>
+                    <span>Dashboard</span>
                 </button>
-                <button class="nav-link" id="analytics-link">
-                    <span class="icon">📈</span>
-                    <span>Analytics</span>
+                <button class="nav-link" id="tasks-link">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
+                    <span>Tasks</span>
                 </button>
-                <button class="nav-link" id="profile-link">
-                    <span class="icon">⚙️</span>
-                    <span>Settings</span>
-                </button>
-                
-                <div class="nav-divider"></div>
-                
-                <button class="nav-link logout" id="logout-btn">
-                    <span class="icon">🚪</span>
-                    <span>Logout</span>
+                <button class="nav-link" id="habits-link">
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg></span>
+                    <span>Habits</span>
                 </button>
             </nav>
+
+            <div class="user-profile" id="account-footer-btn">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-info">
+                    <p class="user-name" id="user-name">User</p>
+                    <p class="user-email">Signed in</p>
+                </div>
+                <button type="button" class="logout-icon-btn" id="logout-btn" title="Logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Tracker Section -->
-            <section class="tracker-section">
-                <div class="section-header">
-                    <h2>Weekly Habit Tracker</h2>
-                    <div class="week-selector">
-                        <button id="prev-week" class="week-btn">← Previous</button>
-                        <span id="week-display">Week of Jan 1, 2026</span>
-                        <button id="next-week" class="week-btn">Next →</button>
+
+            <!-- DASHBOARD -->
+            <section class="page-section active" id="dashboard-section">
+                <div class="page-topbar">
+                    <div>
+                        <h2 id="dashboard-greeting">Good afternoon <span>&#128075;</span></h2>
+                        <p class="page-subtitle" id="dashboard-date">Today</p>
+                    </div>
+                    <div class="page-topbar-actions">
+                        <button class="btn-pill-add" id="quick-add-btn">+ Quick add</button>
+                        <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme">&#9728;&#65039;</button>
+                    </div>
+                </div>
+
+                <div class="dash-top">
+                    <div class="dash-card progress-card">
+                        <div class="dash-card-label">Today's progress</div>
+                        <div class="progress-card-body">
+                            <div class="progress-ring-wrap" id="progress-ring" style="--pct:0;">
+                                <div class="progress-ring-inner">
+                                    <span class="pct" id="progress-pct">0%</span>
+                                    <span class="pct-sub" id="progress-pct-sub">0/0 done</span>
+                                </div>
+                            </div>
+                            <div class="progress-stats">
+                                <div class="progress-stat-row">
+                                    <span>Tasks</span>
+                                    <span class="value" id="progress-tasks">0/0</span>
+                                </div>
+                                <div class="progress-stat-row">
+                                    <span>Habits</span>
+                                    <span class="value" id="progress-habits">0/0</span>
+                                </div>
+                                <div class="progress-stat-row">
+                                    <span>Overdue</span>
+                                    <span class="value overdue" id="progress-overdue">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress-quote">&ldquo;Small steps, repeated, become momentum.&rdquo;</div>
+                    </div>
+
+                    <div class="dash-card stat-card">
+                        <div class="dash-card-label">&#10024; Progress score</div>
+                        <div class="stat-value" id="stat-progress-score">0</div>
+                        <div class="stat-sub" id="stat-progress-score-sub">50% tasks &middot; 35% habits &middot; 15% streak, minus overdue</div>
+                    </div>
+
+                    <div class="dash-card stat-card">
+                        <div class="dash-card-label">&#128293; Current streak</div>
+                        <div class="stat-value" id="stat-current-streak">0 <span class="unit">days</span></div>
+                        <div class="stat-sub">Days where every scheduled habit was done</div>
+                    </div>
+
+                    <div class="dash-card stat-card">
+                        <div class="dash-card-label">&#127942; Best streak</div>
+                        <div class="stat-value" id="stat-best-streak">0 <span class="unit">days</span></div>
+                        <div class="stat-sub">Your personal record</div>
+                    </div>
+
+                    <div class="dash-card stat-card">
+                        <div class="dash-card-label">&#9888;&#65039; Overdue tasks</div>
+                        <div class="stat-value" id="stat-overdue-tasks">0</div>
+                        <div class="stat-sub" id="stat-overdue-sub">Nothing overdue. Nice work.</div>
+                    </div>
+                </div>
+
+                <div class="dash-mid">
+                    <div class="dash-card dash-panel">
+                        <div class="section-header">
+                            <h3>Today's tasks</h3>
+                            <button class="btn-add" id="dash-add-task-btn">+ Add task</button>
+                        </div>
+                        <div class="dash-panel-body" id="today-tasks-body">
+                            <div class="dash-empty">
+                                <div class="dash-empty-title">No tasks for today &#127881;</div>
+                                <div class="dash-empty-sub">Plan one small thing &mdash; momentum starts there.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dash-card dash-panel">
+                        <div class="section-header">
+                            <h3>Today's habits</h3>
+                            <button class="btn-add" id="dash-add-habit-btn">+ Add habit</button>
+                        </div>
+                        <div class="dash-panel-body" id="today-habits-body">
+                            <div class="dash-empty">
+                                <div class="dash-empty-title">No habits scheduled</div>
+                                <div class="dash-empty-sub">Create one habit you can repeat daily.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-bottom">
+                    <div class="dash-card chart-card">
+                        <h3>Weekly productivity</h3>
+                        <p class="chart-sub">Completion percentage per day</p>
+                        <canvas id="weekly-productivity-chart" height="230"></canvas>
+                    </div>
+
+                    <div class="dash-card dash-panel">
+                        <div class="upcoming-header">
+                            <h3>Upcoming</h3>
+                            <a class="view-all-link" id="upcoming-view-all">View all</a>
+                        </div>
+                        <div class="dash-panel-body" id="upcoming-body">
+                            <div class="dash-empty">
+                                <div class="dash-empty-title">Nothing scheduled ahead</div>
+                                <div class="dash-empty-sub">Plan your week when you're ready.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TASKS -->
+            <section class="page-section" id="tasks-section">
+                <div class="page-topbar">
+                    <div>
+                        <h2>Tasks</h2>
+                        <p class="page-subtitle">One-off things to get done.</p>
+                    </div>
+                    <div class="page-topbar-actions">
+                        <button class="theme-toggle" id="theme-toggle-btn-2" title="Toggle theme">&#9728;&#65039;</button>
+                    </div>
+                </div>
+
+                <div class="dash-card">
+                    <div class="add-task-section" style="padding: 1.5rem 1.5rem 0;">
+                        <input type="text" id="task-input" class="task-input" placeholder="Add a new task (e.g., Pay rent, Call the dentist)">
+                        <input type="date" id="task-date-input" class="task-input" style="flex: 0 0 170px;">
+                        <button id="add-task-btn" class="btn-add">+ Add Task</button>
+                    </div>
+                    <div class="tasks-list-container" id="tasks-list">
+                        <div class="empty-state">No tasks yet. Add one to get started!</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HABITS (weekly tracker) -->
+            <section class="page-section" id="habits-section">
+                <div class="page-topbar">
+                    <div>
+                        <h2>Weekly Habit Tracker</h2>
+                        <p class="page-subtitle">Keep your daily habits consistent.</p>
+                    </div>
+                    <div class="page-topbar-actions">
+                        <div class="week-selector">
+                            <button id="prev-week" class="week-btn">&larr; Previous</button>
+                            <span id="week-display">Week of Jan 1, 2026</span>
+                            <button id="next-week" class="week-btn">Next &rarr;</button>
+                        </div>
+                        <button class="theme-toggle" id="theme-toggle-btn-3" title="Toggle theme">&#9728;&#65039;</button>
                     </div>
                 </div>
 
                 <!-- Add Habit Form -->
                 <div class="add-habit-section">
-                    <input 
-                        type="text" 
-                        id="habit-input" 
+                    <input
+                        type="text"
+                        id="habit-input"
                         placeholder="Add a new habit (e.g., Exercise, Read, Meditate)"
                         class="habit-input"
                     >
@@ -233,43 +374,23 @@
                             <!-- Days will be generated here -->
                         </div>
                     </div>
-                    
+
                     <div class="calendar-body" id="calendar-body">
                         <!-- Habits will be generated here -->
                     </div>
                 </div>
             </section>
 
-            <!-- Analytics Section -->
-            <section class="analytics-section" style="display: none;">
-                <div class="section-header">
-                    <h2>Analytics & Insights</h2>
-                    <p>Visualize your progress and stay motivated.</p>
-                </div>
-
-                <div class="charts-container">
-                    <div class="chart-box">
-                        <h3>Habit Completion Rate</h3>
-                        <canvas id="pie-chart"></canvas>
+            <!-- Profile & Settings Section (reached via the account row in the sidebar) -->
+            <section class="page-section" id="profile-section">
+                <div class="page-topbar">
+                    <div>
+                        <h2>Profile &amp; Settings</h2>
+                        <p class="page-subtitle">Update your account details and personalize your dashboard.</p>
                     </div>
-
-                    <div class="chart-box">
-                        <h3>Weekly Completion Trend</h3>
-                        <canvas id="line-chart"></canvas>
+                    <div class="page-topbar-actions">
+                        <button class="theme-toggle" id="theme-toggle-btn-4" title="Toggle theme">&#9728;&#65039;</button>
                     </div>
-
-                    <div class="chart-box">
-                        <h3>Habit Performance</h3>
-                        <canvas id="bar-chart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Profile & Settings Section -->
-            <section class="profile-section" style="display: none;">
-                <div class="section-header">
-                    <h2>Profile & Settings</h2>
-                    <p>Update your account details and personalize your dashboard.</p>
                 </div>
 
                 <div class="settings-grid">
@@ -307,8 +428,8 @@
                         <div class="card-header">Preferences</div>
                         <div class="settings-list">
                             <label class="toggle-row">
-                                <span>Neon mode</span>
-                                <input type="checkbox" id="pref-neon" checked>
+                                <span>Dark mode</span>
+                                <input type="checkbox" id="pref-neon">
                             </label>
                             <label class="toggle-row">
                                 <span>Show streak reminders</span>
@@ -319,6 +440,9 @@
                                 <input type="checkbox" id="pref-insights" checked>
                             </label>
                             <div class="setting-hint">Your theme and preferences are saved locally in this browser for a more personal experience.</div>
+                        </div>
+                        <div style="margin-top:1.25rem;">
+                            <button type="button" class="btn btn-social btn-block" id="back-to-dashboard-btn">&larr; Back to dashboard</button>
                         </div>
                     </div>
                 </div>
