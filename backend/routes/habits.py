@@ -89,6 +89,7 @@ def update_habit(habit_id):
             habit.description = data['description']
         
         habit.updated_at = datetime.utcnow()
+        db.session.add(habit)
         db.session.commit()
         
         return jsonify({
@@ -145,6 +146,7 @@ def toggle_completion(habit_id):
         
         if completion:
             completion.completed = not completion.completed
+            db.session.add(completion)
         else:
             completion = HabitCompletion(
                 habit_id=habit_id,

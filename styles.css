@@ -52,7 +52,8 @@
 }
 
 /* DARK THEME */
-[data-theme="dark"] {
+[data-theme="dark"],
+body.dark-mode {
     --bg-base: #0d0e13;
     --bg-mid: #131520;
 
