@@ -55,14 +55,27 @@ class Session:
 
 
 class Query:
-    def __init__(self, model): self.model, self.filters = model, {}
-    def filter_by(self, **kwargs): self.filters.update(kwargs); return self
-    def all(self): return self.model._fetch_all(self.filters)
+    def __init__(self, model, filters=None):
+        self.model = model
+        self.filters = dict(filters or {})
+
+    def filter_by(self, **kwargs):
+        filters = dict(self.filters)
+        filters.update(kwargs)
+        return Query(self.model, filters)
+
+    def all(self):
+        return self.model._fetch_all(self.filters)
+
     def first(self):
         rows = self.all()
         return rows[0] if rows else None
-    def count(self): return len(self.all())
-    def get(self, value): return self.filter_by(id=str(value)).first()
+
+    def count(self):
+        return len(self.all())
+
+    def get(self, value):
+        return self.filter_by(id=str(value)).first()
 
 
 class BaseModel:
@@ -85,12 +98,14 @@ class BaseModel:
 class User(UserMixin, BaseModel):
     __tablename__ = 'users'
     def __init__(self, username='', email='', first_name='', last_name='', **kwargs):
-        self.id = str(kwargs.get('id') or '')
+        self.id = str(kwargs.get('id') or uuid4().hex)
         self.username, self.email = username, email
         self.password_hash = kwargs.get('password_hash')
         self.google_id, self.microsoft_id = kwargs.get('google_id'), kwargs.get('microsoft_id')
         self.first_name, self.last_name = first_name, last_name
         self.avatar_url = kwargs.get('avatar_url')
+        self.reset_token_hash = kwargs.get('reset_token_hash')
+        self.reset_token_expires_at = kwargs.get('reset_token_expires_at')
         self._is_active, self._email_verified = kwargs.get('is_active', True), kwargs.get('email_verified', False)
         self.created_at, self.updated_at = kwargs.get('created_at') or datetime.utcnow(), kwargs.get('updated_at') or datetime.utcnow()
     @property

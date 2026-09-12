@@ -1,10 +1,27 @@
 const API = '/api';
 const $ = id => document.getElementById(id);
+const monday = date => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+};
 let habits = [], tasks = [], weekStart = monday(new Date()), chart;
-const monday = date => { const d = new Date(date); d.setHours(0,0,0,0); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d; };
 const iso = date => new Date(date).toISOString().slice(0,10);
 const esc = text => { const e = document.createElement('span'); e.textContent = text; return e.innerHTML; };
-async function api(path, options={}) { const res = await fetch(API+path, {credentials:'include', ...options, headers:{'Content-Type':'application/json', ...(options.headers||{})}}); const data = await res.json().catch(()=>({})); if (!res.ok) throw Error(data.error || 'Something went wrong.'); return data; }
+async function api(path, options = {}) {
+    const res = await fetch(API + path, {
+        credentials: 'include',
+        ...options,
+        headers: {
+            ...(options.body ? {'Content-Type': 'application/json'} : {}),
+            ...(options.headers || {})
+        }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || 'Something went wrong.');
+    return data;
+}
 function alertBox(id, text, type='error') { const el=$(id); el.innerHTML=`<div class="alert alert-${type}">${esc(text)}</div>`; setTimeout(()=>el.innerHTML='',4500); }
 function setUser(user) { localStorage.setItem('user',JSON.stringify(user)); $('user-name').textContent=user.first_name||user.username||'User'; $('user-email').textContent=user.email||''; $('user-avatar').textContent=(user.first_name||user.username||'U')[0].toUpperCase(); [['username','username'],['email','email'],['first-name','first_name'],['last-name','last_name']].forEach(([id,key])=>{if($('profile-'+id)) $('profile-'+id).value=user[key]||'';}); }
 function auth(mode) { $('login-modal').classList.toggle('active',mode==='login'); $('register-modal').classList.toggle('active',mode==='register'); }
@@ -25,5 +42,219 @@ async function addTask(){const title=$('task-input').value.trim();if(!title)retu
 async function toggleHabit(id,date){try{const data=await api('/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({date})}),h=habits.find(h=>h.id===id),i=(h.completions||[]).findIndex(c=>c.date===date);if(i>=0)h.completions.splice(i,1);if(data.completion.completed)h.completions.push(data.completion);renderAll();}catch(e){alert(e.message);refresh();}}
 async function toggleTask(id,checked){try{const data=await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({completed:checked})}),i=tasks.findIndex(t=>t.id===id);tasks[i]=data.task;renderAll();}catch(e){alert(e.message);refresh();}}
 async function deleteItem(type,id){if(!confirm('Delete this '+type+'?'))return;try{await api('/'+type+'s/'+id,{method:'DELETE'});if(type==='habit')habits=habits.filter(h=>h.id!==id);else tasks=tasks.filter(t=>t.id!==id);renderAll();}catch(e){alert(e.message);}}
-function bind(){ $('signup-link').onclick=e=>{e.preventDefault();auth('register');};$('signin-link').onclick=e=>{e.preventDefault();auth('login');};$('login-form').onsubmit=async e=>{e.preventDefault();try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:$('login-email').value,password:$('login-password').value,remember:$('login-remember').checked})});setUser(d.user);auth();refresh();}catch(x){alertBox('login-alert-container',x.message);}};$('register-form').onsubmit=async e=>{e.preventDefault();if($('register-password').value!==$('confirm-password').value)return alertBox('register-alert-container','Passwords do not match.');if(!$('terms').checked)return alertBox('register-alert-container','Please accept the terms to continue.');try{const d=await api('/auth/register',{method:'POST',body:JSON.stringify({first_name:$('first-name').value,last_name:$('last-name').value,username:$('username').value,email:$('register-email').value,password:$('register-password').value})});setUser(d.user);auth();refresh();}catch(x){alertBox('register-alert-container',x.message);}};['google-login','google-signup'].forEach(id=>$(id).onclick=()=>location.href='/api/auth/google');['dashboard','tasks','habits'].forEach(name=>$(name+'-link').onclick=()=>page(name));$('account-footer-btn').onclick=e=>{if(!e.target.closest('#logout-btn'))page('profile');};$('logout-btn').onclick=async e=>{e.stopPropagation();await fetch('/api/auth/logout',{method:'POST',credentials:'include'});localStorage.removeItem('user');auth('login');};$('add-habit-btn').onclick=addHabit;$('add-task-btn').onclick=addTask;$('habit-input').onkeydown=e=>e.key==='Enter'&&addHabit();$('task-input').onkeydown=e=>e.key==='Enter'&&addTask();$('quick-add-btn').onclick=()=>{page('tasks');$('task-input').focus();};$('dash-add-task-btn').onclick=$('quick-add-btn').onclick;$('dash-add-habit-btn').onclick=()=>{page('habits');$('habit-input').focus();};$('upcoming-view-all').onclick=()=>page('tasks');$('prev-week').onclick=()=>{weekStart.setDate(weekStart.getDate()-7);renderAll();};$('next-week').onclick=()=>{weekStart.setDate(weekStart.getDate()+7);renderAll();};document.addEventListener('change',e=>{if(e.target.dataset.habit)toggleHabit(+e.target.dataset.habit,e.target.dataset.date);if(e.target.dataset.task)toggleTask(+e.target.dataset.task,e.target.checked);});document.addEventListener('click',e=>{if(e.target.dataset.deleteHabit)deleteItem('habit',+e.target.dataset.deleteHabit);if(e.target.dataset.deleteTask)deleteItem('task',+e.target.dataset.deleteTask);});document.querySelectorAll('.theme-toggle').forEach(b=>b.onclick=()=>{document.body.classList.toggle('dark-mode');localStorage.setItem('habittrack_dark',document.body.classList.contains('dark-mode'));});$('back-to-dashboard-btn').onclick=()=>page('dashboard');$('profile-form').onsubmit=async e=>{e.preventDefault();try{const d=await api('/auth/profile',{method:'PUT',body:JSON.stringify({username:$('profile-username').value.trim(),email:$('profile-email').value.trim(),first_name:$('profile-first-name').value.trim(),last_name:$('profile-last-name').value.trim(),password:$('profile-password').value})});$('profile-password').value='';setUser(d.user);$('profile-status').textContent='Profile updated successfully.';$('profile-status').className='status-message success';}catch(x){$('profile-status').textContent=x.message;$('profile-status').className='status-message error';}};}
+function bind() {
+    const safeOn = (id, event, handler) => {
+        const el = $(id);
+        if (el) el.addEventListener(event, handler);
+    };
+
+    safeOn('signup-link', 'click', e => {
+        e.preventDefault();
+        auth('register');
+    });
+
+    safeOn('signin-link', 'click', e => {
+        e.preventDefault();
+        auth('login');
+    });
+
+    safeOn('forgot-password-link', 'click', async e => {
+        e.preventDefault();
+        const email = prompt('Enter your account email address:');
+        if (!email) return;
+
+        try {
+            const data = await api('/auth/forgot-password', {
+                method: 'POST',
+                body: JSON.stringify({email: email.trim()})
+            });
+
+            // In development the API returns a reset token so the flow can be
+            // tested without an email provider. Production should email it.
+            if (data.reset_token) {
+                const password = prompt('Enter your new password (minimum 8 characters):');
+                if (!password) return;
+                const confirmPassword = prompt('Confirm your new password:');
+                if (password !== confirmPassword) {
+                    alert('Passwords do not match.');
+                    return;
+                }
+                await api('/auth/reset-password', {
+                    method: 'POST',
+                    body: JSON.stringify({token: data.reset_token, password})
+                });
+                alert('Password reset successfully. You can now sign in.');
+            } else {
+                alert(data.message || 'If the account exists, a reset link has been sent.');
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    const loginForm = $('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const email = $('login-email').value.trim();
+            const password = $('login-password').value;
+            const remember = $('login-remember').checked;
+            if (!email || !password) {
+                alertBox('login-alert-container', 'Please enter your email and password.');
+                return;
+            }
+            const button = loginForm.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            try {
+                button.disabled = true;
+                button.textContent = 'Signing in...';
+                const data = await api('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({email, password, remember})
+                });
+                setUser(data.user);
+                auth();
+                await refresh();
+            } catch (error) {
+                console.error('Login error:', error);
+                alertBox('login-alert-container', error.message || 'Unable to sign in.');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        });
+    }
+
+    const registerForm = $('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const firstName = $('first-name').value.trim();
+            const lastName = $('last-name').value.trim();
+            const username = $('username').value.trim();
+            const email = $('register-email').value.trim();
+            const password = $('register-password').value;
+            const confirmPassword = $('confirm-password').value;
+
+            if (password.length < 8) {
+                alertBox('register-alert-container', 'Password must be at least 8 characters.');
+                return;
+            }
+            if (password !== confirmPassword) {
+                alertBox('register-alert-container', 'Passwords do not match.');
+                return;
+            }
+            if (!$('terms').checked) {
+                alertBox('register-alert-container', 'Please accept the Terms of Service.');
+                return;
+            }
+
+            const button = registerForm.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            try {
+                button.disabled = true;
+                button.textContent = 'Creating account...';
+                const data = await api('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        username,
+                        email,
+                        password
+                    })
+                });
+                setUser(data.user);
+                auth();
+                await refresh();
+            } catch (error) {
+                console.error('Registration error:', error);
+                alertBox('register-alert-container', error.message || 'Unable to create account.');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        });
+    }
+
+    ['google-login', 'google-signup'].forEach(id => {
+        safeOn(id, 'click', () => {
+            window.location.href = API + '/auth/google';
+        });
+    });
+
+    ['dashboard', 'tasks', 'habits'].forEach(name => {
+        safeOn(name + '-link', 'click', () => page(name));
+    });
+
+    safeOn('account-footer-btn', 'click', e => {
+        if (!e.target.closest('#logout-btn')) page('profile');
+    });
+
+    safeOn('logout-btn', 'click', async e => {
+        e.stopPropagation();
+        try {
+            await api('/auth/logout', {method: 'POST'});
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            localStorage.removeItem('user');
+            auth('login');
+        }
+    });
+
+    safeOn('add-habit-btn', 'click', addHabit);
+    safeOn('add-task-btn', 'click', addTask);
+    safeOn('habit-input', 'keydown', e => { if (e.key === 'Enter') addHabit(); });
+    safeOn('task-input', 'keydown', e => { if (e.key === 'Enter') addTask(); });
+    safeOn('quick-add-btn', 'click', () => { page('tasks'); $('task-input').focus(); });
+    safeOn('dash-add-task-btn', 'click', () => { page('tasks'); $('task-input').focus(); });
+    safeOn('dash-add-habit-btn', 'click', () => { page('habits'); $('habit-input').focus(); });
+    safeOn('upcoming-view-all', 'click', () => page('tasks'));
+    safeOn('prev-week', 'click', () => { weekStart.setDate(weekStart.getDate() - 7); renderAll(); });
+    safeOn('next-week', 'click', () => { weekStart.setDate(weekStart.getDate() + 7); renderAll(); });
+
+    document.addEventListener('change', e => {
+        if (e.target.dataset.habit) toggleHabit(e.target.dataset.habit, e.target.dataset.date);
+        if (e.target.dataset.task) toggleTask(e.target.dataset.task, e.target.checked);
+    });
+
+    document.addEventListener('click', e => {
+        if (e.target.dataset.deleteHabit) deleteItem('habit', e.target.dataset.deleteHabit);
+        if (e.target.dataset.deleteTask) deleteItem('task', e.target.dataset.deleteTask);
+    });
+
+    document.querySelectorAll('.theme-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('habittrack_dark', document.body.classList.contains('dark-mode'));
+        });
+    });
+
+    safeOn('back-to-dashboard-btn', 'click', () => page('dashboard'));
+
+    safeOn('profile-form', 'submit', async e => {
+        e.preventDefault();
+        try {
+            const data = await api('/auth/profile', {
+                method: 'PUT',
+                body: JSON.stringify({
+                    username: $('profile-username').value.trim(),
+                    email: $('profile-email').value.trim(),
+                    first_name: $('profile-first-name').value.trim(),
+                    last_name: $('profile-last-name').value.trim(),
+                    password: $('profile-password').value
+                })
+            });
+            $('profile-password').value = '';
+            setUser(data.user);
+            $('profile-status').textContent = 'Profile updated successfully.';
+            $('profile-status').className = 'status-message success';
+        } catch (error) {
+            $('profile-status').textContent = error.message;
+            $('profile-status').className = 'status-message error';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded',async()=>{bind();if(localStorage.getItem('habittrack_dark')==='true')document.documentElement.dataset.theme='dark';try{const user=await api('/auth/current-user');setUser(user);auth();await refresh();}catch{localStorage.removeItem('user');auth('login');}});

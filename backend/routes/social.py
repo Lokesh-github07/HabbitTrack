@@ -38,7 +38,7 @@ def get_share_url(habit, platform, message):
     
     return urls.get(platform, share_link)
 
-@social_bp.route('/share/<int:habit_id>/<platform>', methods=['POST'])
+@social_bp.route('/share/<habit_id>/<platform>', methods=['POST'])
 @login_required
 def share_habit(habit_id, platform):
     """Create and track a social share"""

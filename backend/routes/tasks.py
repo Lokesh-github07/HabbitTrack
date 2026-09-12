@@ -16,7 +16,7 @@ def owned_task(task_id):
 @login_required
 def list_tasks():
     tasks = Task.query.filter_by(user_id=current_user.id).all()
-    tasks.sort(key=lambda task: (task.completed, task.due_date or date.max, task.id or 0))
+    tasks.sort(key=lambda task: (task.completed, task.due_date or date.max, task.id or ''))
     return jsonify([task.to_dict() for task in tasks])
 
 
@@ -37,7 +37,7 @@ def create_task():
     return jsonify({'message': 'Task created', 'task': task.to_dict()}), 201
 
 
-@tasks_bp.route('/<int:task_id>', methods=['PUT'])
+@tasks_bp.route('/<task_id>', methods=['PUT'])
 @login_required
 def update_task(task_id):
     task = owned_task(task_id)
@@ -61,7 +61,7 @@ def update_task(task_id):
     return jsonify({'message': 'Task updated', 'task': task.to_dict()})
 
 
-@tasks_bp.route('/<int:task_id>', methods=['DELETE'])
+@tasks_bp.route('/<task_id>', methods=['DELETE'])
 @login_required
 def delete_task(task_id):
     task = owned_task(task_id)

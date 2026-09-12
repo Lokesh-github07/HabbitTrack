@@ -31,7 +31,7 @@ def create_app(config_name='development'):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.get_by_id(int(user_id))
+        return User.get_by_id(str(user_id))
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(habits_bp)

@@ -50,7 +50,7 @@ def create_habit():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@habits_bp.route('/<int:habit_id>', methods=['GET'])
+@habits_bp.route('/<habit_id>', methods=['GET'])
 @login_required
 def get_habit(habit_id):
     """Get a specific habit"""
@@ -68,7 +68,7 @@ def get_habit(habit_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@habits_bp.route('/<int:habit_id>', methods=['PUT'])
+@habits_bp.route('/<habit_id>', methods=['PUT'])
 @login_required
 def update_habit(habit_id):
     """Update a habit"""
@@ -101,7 +101,7 @@ def update_habit(habit_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@habits_bp.route('/<int:habit_id>', methods=['DELETE'])
+@habits_bp.route('/<habit_id>', methods=['DELETE'])
 @login_required
 def delete_habit(habit_id):
     """Delete a habit"""
@@ -123,7 +123,7 @@ def delete_habit(habit_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@habits_bp.route('/<int:habit_id>/toggle', methods=['POST'])
+@habits_bp.route('/<habit_id>/toggle', methods=['POST'])
 @login_required
 def toggle_completion(habit_id):
     """Toggle habit completion for a date"""
@@ -166,7 +166,7 @@ def toggle_completion(habit_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@habits_bp.route('/<int:habit_id>/stats', methods=['GET'])
+@habits_bp.route('/<habit_id>/stats', methods=['GET'])
 @login_required
 def get_habit_stats(habit_id):
     """Get statistics for a habit"""
