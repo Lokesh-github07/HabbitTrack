@@ -82,7 +82,12 @@ class BaseModel:
     __tablename__ = ''
     @classmethod
     def _fetch_all(cls, filters=None):
-        return [cls._from_document(document) for document in db.collection(cls.__tablename__).find(filters or {})]
+        # Filter values go straight into a Mongo query document, so a bare
+        # date (e.g. querying HabitCompletion by `date=...`) has to be
+        # converted the same way saved documents are, or pymongo raises
+        # InvalidDocument while encoding the *query* itself.
+        safe_filters = {key: _mongo_safe(value) for key, value in (filters or {}).items()}
+        return [cls._from_document(document) for document in db.collection(cls.__tablename__).find(safe_filters)]
     @classmethod
     def _from_document(cls, document):
         document.pop('_id', None)
@@ -94,13 +99,22 @@ class BaseModel:
         # Saving a bare date (e.g. when toggling a habit or task checkbox) used
         # to raise bson.errors.InvalidDocument, which surfaced as a 500 error.
         for key, value in doc.items():
-            if isinstance(value, date) and not isinstance(value, datetime):
-                doc[key] = datetime.combine(value, datetime.min.time())
+            doc[key] = _mongo_safe(value)
         return doc
     def _save(self):
         if not self.id: self.id = uuid4().hex
         db.collection(self.__tablename__).replace_one({'id': self.id}, self._document(), upsert=True)
     def _delete(self): db.collection(self.__tablename__).delete_one({'id': self.id})
+
+
+def _mongo_safe(value):
+    """Convert a bare date into a datetime so pymongo can encode it — used
+    for both documents being saved AND query filter dicts being sent to
+    Mongo's find(), since either one raises bson.errors.InvalidDocument
+    if it contains a plain datetime.date."""
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return datetime.combine(value, datetime.min.time())
+    return value
 
 
 def _as_date(value):
