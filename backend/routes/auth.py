@@ -97,36 +97,147 @@ def verify_token():
     return jsonify({'authenticated': True, 'user': current_user.to_dict()}), 200
 
 
+OTP_LENGTH = 6
+OTP_TTL_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+RESET_TOKEN_TTL_MINUTES = 15
+IS_LOCAL_HOST = ('localhost', '127.0.0.1')
+
+
+def generate_otp():
+    return ''.join(str(secrets.randbelow(10)) for _ in range(OTP_LENGTH))
+
+
+def hash_value(value):
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
+def send_otp_email(user, otp):
+    """Placeholder for wiring up a real email provider (SendGrid, SES, SMTP...).
+
+    Right now this just logs the OTP server-side. Plug in your provider here;
+    everything else in the OTP flow already works end-to-end.
+    """
+    print(f'[HabitTrack] Password reset OTP for {user.email}: {otp}')
+
+
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
-    """Create a short-lived password reset token.
-
-    In development the raw token is returned so the flow can be tested without
-    an email provider. In production, send the tokenized URL by email instead.
-    """
+    """Step 1: generate and 'send' a one-time password to the user's email."""
     try:
         data = request.get_json() or {}
         email = normalize_email(data.get('email'))
         if not email:
             return json_error('Email address is required')
 
-        generic_message = 'If an account exists for this email, a reset link has been generated.'
+        generic_message = 'If an account exists for this email, a verification code has been sent.'
         user = User.find_by_email(email)
         if not user:
             return jsonify({'message': generic_message}), 200
 
-        raw_token = secrets.token_urlsafe(32)
-        user.reset_token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
-        user.reset_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
+        otp = generate_otp()
+        user.otp_hash = hash_value(otp)
+        user.otp_expires_at = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
+        user.otp_attempts = 0
+        # Any in-flight reset token from an older flow is now invalid.
+        user.reset_token_hash = None
+        user.reset_token_expires_at = None
         user.updated_at = datetime.utcnow()
         db.session.add(user)
         db.session.commit()
 
-        response = {'message': generic_message}
-        if request.host.startswith(('localhost', '127.0.0.1')):
-            response['reset_token'] = raw_token
-            response['reset_url'] = f'{request.host_url}?reset_token={raw_token}'
+        send_otp_email(user, otp)
+
+        response = {'message': generic_message, 'expires_in_minutes': OTP_TTL_MINUTES}
+        if request.host.startswith(IS_LOCAL_HOST):
+            # Dev convenience only: no email provider is configured yet, so
+            # surface the code directly instead of it disappearing into a log.
+            response['otp'] = otp
         return jsonify(response), 200
+    except Exception as exc:
+        db.session.rollback()
+        return json_error(str(exc), 500)
+
+
+@auth_bp.route('/resend-otp', methods=['POST'])
+def resend_otp():
+    """Regenerate a fresh OTP for an email that already requested one."""
+    try:
+        data = request.get_json() or {}
+        email = normalize_email(data.get('email'))
+        if not email:
+            return json_error('Email address is required')
+
+        generic_message = 'If an account exists for this email, a new code has been sent.'
+        user = User.find_by_email(email)
+        if not user:
+            return jsonify({'message': generic_message}), 200
+
+        otp = generate_otp()
+        user.otp_hash = hash_value(otp)
+        user.otp_expires_at = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
+        user.otp_attempts = 0
+        user.updated_at = datetime.utcnow()
+        db.session.add(user)
+        db.session.commit()
+
+        send_otp_email(user, otp)
+
+        response = {'message': generic_message, 'expires_in_minutes': OTP_TTL_MINUTES}
+        if request.host.startswith(IS_LOCAL_HOST):
+            response['otp'] = otp
+        return jsonify(response), 200
+    except Exception as exc:
+        db.session.rollback()
+        return json_error(str(exc), 500)
+
+
+@auth_bp.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    """Step 2: confirm the code and hand back a short-lived reset token."""
+    try:
+        data = request.get_json() or {}
+        email = normalize_email(data.get('email'))
+        otp = (data.get('otp') or '').strip()
+
+        if not email or not otp:
+            return json_error('Email and verification code are required')
+
+        user = User.find_by_email(email)
+        if not user or not user.otp_hash or not user.otp_expires_at:
+            return json_error('Invalid or expired verification code')
+
+        if user.otp_attempts >= OTP_MAX_ATTEMPTS:
+            return json_error('Too many incorrect attempts. Please request a new code.', 429)
+
+        expired = hasattr(user.otp_expires_at, 'replace') and user.otp_expires_at < datetime.utcnow()
+        if expired:
+            return json_error('This code has expired. Please request a new one.')
+
+        if hash_value(otp) != user.otp_hash:
+            user.otp_attempts += 1
+            db.session.add(user)
+            db.session.commit()
+            remaining = max(OTP_MAX_ATTEMPTS - user.otp_attempts, 0)
+            return json_error(f'Incorrect code. {remaining} attempt(s) remaining.')
+
+        # Code is correct: clear the OTP and issue a one-time reset token that
+        # the final "set new password" step will redeem.
+        raw_token = secrets.token_urlsafe(32)
+        user.reset_token_hash = hash_value(raw_token)
+        user.reset_token_expires_at = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
+        user.otp_hash = None
+        user.otp_expires_at = None
+        user.otp_attempts = 0
+        user.updated_at = datetime.utcnow()
+        db.session.add(user)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Code verified',
+            'reset_token': raw_token,
+            'expires_in_minutes': RESET_TOKEN_TTL_MINUTES
+        }), 200
     except Exception as exc:
         db.session.rollback()
         return json_error(str(exc), 500)

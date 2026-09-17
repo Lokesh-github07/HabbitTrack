@@ -88,11 +88,35 @@ class BaseModel:
         document.pop('_id', None)
         return cls(**document)
     def _document(self):
-        return {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+        doc = {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+        # MongoDB/BSON only knows how to store datetime.datetime, not the plain
+        # datetime.date objects this app uses for due dates / completion dates.
+        # Saving a bare date (e.g. when toggling a habit or task checkbox) used
+        # to raise bson.errors.InvalidDocument, which surfaced as a 500 error.
+        for key, value in doc.items():
+            if isinstance(value, date) and not isinstance(value, datetime):
+                doc[key] = datetime.combine(value, datetime.min.time())
+        return doc
     def _save(self):
         if not self.id: self.id = uuid4().hex
         db.collection(self.__tablename__).replace_one({'id': self.id}, self._document(), upsert=True)
     def _delete(self): db.collection(self.__tablename__).delete_one({'id': self.id})
+
+
+def _as_date(value):
+    """Normalize a value coming from the app or from Mongo back into a plain date."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).date()
+        except ValueError:
+            return None
+    return value
 
 
 class User(UserMixin, BaseModel):
@@ -106,6 +130,9 @@ class User(UserMixin, BaseModel):
         self.avatar_url = kwargs.get('avatar_url')
         self.reset_token_hash = kwargs.get('reset_token_hash')
         self.reset_token_expires_at = kwargs.get('reset_token_expires_at')
+        self.otp_hash = kwargs.get('otp_hash')
+        self.otp_expires_at = kwargs.get('otp_expires_at')
+        self.otp_attempts = kwargs.get('otp_attempts', 0)
         self._is_active, self._email_verified = kwargs.get('is_active', True), kwargs.get('email_verified', False)
         self.created_at, self.updated_at = kwargs.get('created_at') or datetime.utcnow(), kwargs.get('updated_at') or datetime.utcnow()
     @property
@@ -142,7 +169,7 @@ class Habit(BaseModel):
 class Task(BaseModel):
     __tablename__ = 'tasks'
     def __init__(self, user_id='', title='', due_date=None, completed=False, **kwargs):
-        self.id=str(kwargs.get('id') or ''); self.user_id=str(user_id); self.title=title; self.due_date=due_date; self.completed=bool(completed)
+        self.id=str(kwargs.get('id') or ''); self.user_id=str(user_id); self.title=title; self.due_date=_as_date(due_date); self.completed=bool(completed)
         self.created_at=kwargs.get('created_at') or datetime.utcnow(); self.updated_at=kwargs.get('updated_at') or datetime.utcnow()
     def to_dict(self): return {'id':self.id,'title':self.title,'due_date':self.due_date.isoformat() if hasattr(self.due_date,'isoformat') else self.due_date,'completed':self.completed,'created_at':self.created_at.isoformat()}
 
@@ -150,7 +177,7 @@ class Task(BaseModel):
 class HabitCompletion(BaseModel):
     __tablename__ = 'habit_completions'
     def __init__(self, habit_id='', date=None, completed=True, **kwargs):
-        self.id=str(kwargs.get('id') or ''); self.habit_id=str(habit_id); self.date=date or datetime.utcnow().date(); self.completed=bool(completed); self.created_at=kwargs.get('created_at') or datetime.utcnow()
+        self.id=str(kwargs.get('id') or ''); self.habit_id=str(habit_id); self.date=_as_date(date) or datetime.utcnow().date(); self.completed=bool(completed); self.created_at=kwargs.get('created_at') or datetime.utcnow()
     def to_dict(self): return {'id':self.id,'habit_id':self.habit_id,'date':self.date.isoformat() if hasattr(self.date,'isoformat') else self.date,'completed':self.completed}
 
 
