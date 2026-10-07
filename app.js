@@ -1,20 +1,53 @@
+// ============================================================================
+// HabitTrack Application - Main Script
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. Constants & Utility Functions
+// ----------------------------------------------------------------------------
+
 const API = '/api';
+
+/** Shorthand for document.getElementById */
 const $ = id => document.getElementById(id);
+
+/** Returns the Monday (start of week) for a given date */
 const monday = date => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     return d;
 };
-let habits = [], tasks = [], weekStart = monday(new Date()), chart;
-const iso = date => new Date(date).toISOString().slice(0,10);
-const esc = text => { const e = document.createElement('span'); e.textContent = text; return e.innerHTML; };
+
+/** Converts a date to ISO date string (YYYY-MM-DD) */
+const iso = date => new Date(date).toISOString().slice(0, 10);
+
+/** Escapes HTML special characters in text */
+const esc = text => {
+    const e = document.createElement('span');
+    e.textContent = text;
+    return e.innerHTML;
+};
+
+// ----------------------------------------------------------------------------
+// 2. Application State
+// ----------------------------------------------------------------------------
+
+let habits = [];
+let tasks = [];
+let weekStart = monday(new Date());
+let chart;
+
+// ----------------------------------------------------------------------------
+// 3. API Helper
+// ----------------------------------------------------------------------------
+
 async function api(path, options = {}) {
     const res = await fetch(API + path, {
         credentials: 'include',
         ...options,
         headers: {
-            ...(options.body ? {'Content-Type': 'application/json'} : {}),
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
             ...(options.headers || {})
         }
     });
@@ -22,32 +55,326 @@ async function api(path, options = {}) {
     if (!res.ok) throw new Error(data.error || data.message || 'Something went wrong.');
     return data;
 }
-function alertBox(id, text, type='error') { const el=$(id); el.innerHTML=`<div class="alert alert-${type}">${esc(text)}</div>`; setTimeout(()=>el.innerHTML='',4500); }
-function setUser(user) { localStorage.setItem('user',JSON.stringify(user)); $('user-name').textContent=user.first_name||user.username||'User'; $('user-email').textContent=user.email||''; $('user-avatar').textContent=(user.first_name||user.username||'U')[0].toUpperCase(); [['username','username'],['email','email'],['first-name','first_name'],['last-name','last_name']].forEach(([id,key])=>{if($('profile-'+id)) $('profile-'+id).value=user[key]||'';}); }
-function auth(mode) { $('login-modal').classList.toggle('active',mode==='login'); $('register-modal').classList.toggle('active',mode==='register'); }
-function page(name) { document.querySelectorAll('.page-section').forEach(el=>el.classList.toggle('active',el.id===name+'-section')); document.querySelectorAll('.nav-link').forEach(el=>el.classList.toggle('active',el.id===name+'-link')); renderAll(); }
-async function refresh() { [habits,tasks]=await Promise.all([api('/habits'),api('/tasks')]); renderAll(); }
-const completed = (habit,date) => (habit.completions||[]).some(x=>x.date===date&&x.completed);
-function streak(habit) { let count=0; for(let i=0;i<366;i++){const d=new Date();d.setDate(d.getDate()-i);if(!completed(habit,iso(d)))break;count++;}return count; }
-function weekDates() { return Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d;}); }
-function renderHabits() { const dates=weekDates(), body=$('calendar-body'); $('calendar-days-header').innerHTML=dates.map(d=>`<div class="calendar-day-header"><span>${d.toLocaleDateString('en-US',{weekday:'short'})}</span><span>${d.getDate()}</span></div>`).join(''); $('week-display').textContent=`Week of ${weekStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${dates[6].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`; if(!habits.length){body.innerHTML='<div class="empty-state">No habits yet. Add one to get started!</div>';return;} body.innerHTML=habits.map(h=>`<div class="habit-row"><div class="habit-label"><span class="habit-name">${esc(h.name)}</span><div class="habit-stats"><span class="stat">🔥 ${streak(h)}</span></div><button class="btn-delete" data-delete-habit="${h.id}">×</button></div><div class="habit-checkboxes">${dates.map(d=>`<label class="checkbox-label"><input class="habit-checkbox" data-habit="${h.id}" data-date="${iso(d)}" type="checkbox" ${completed(h,iso(d))?'checked':''}></label>`).join('')}</div></div>`).join(''); }
-function due(date) { if(!date)return 'No due date';if(date===iso(new Date()))return 'Today';return new Date(date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
-function renderTasks() { const target=$('tasks-list'); if(!tasks.length){target.innerHTML='<div class="empty-state">No tasks yet. Add one to get started!</div>';return;} target.innerHTML=tasks.map(t=>`<div class="task-row ${t.completed?'done':''}"><input type="checkbox" data-task="${t.id}" ${t.completed?'checked':''}><span class="task-text">${esc(t.title)}</span><span class="task-due">${due(t.due_date)}</span><button class="btn-delete" data-delete-task="${t.id}">×</button></div>`).join(''); }
-function dashRows(items,kind,today) { if(!items.length)return `<div class="dash-empty"><div class="dash-empty-title">${kind==='task'?'No tasks for today 🎉':'No habits scheduled'}</div><div class="dash-empty-sub">${kind==='task'?'Plan one small thing — momentum starts there.':'Create one habit you can repeat daily.'}</div></div>`;return items.map(x=>`<div class="dash-list-row"><label><input type="checkbox" ${kind==='task'?`data-task="${x.id}" ${x.completed?'checked':''}`:`data-habit="${x.id}" data-date="${today}" ${completed(x,today)?'checked':''}`}> ${esc(kind==='task'?x.title:x.name)}</label><span>${kind==='task'?due(x.due_date):streak(x)+' day streak'}</span></div>`).join(''); }
-function renderDashboard() { const today=iso(new Date()), todayTasks=tasks.filter(t=>t.due_date===today), finishedTasks=todayTasks.filter(t=>t.completed).length, finishedHabits=habits.filter(h=>completed(h,today)).length,total=todayTasks.length+habits.length,done=finishedTasks+finishedHabits,pct=total?Math.round(done/total*100):0,overdue=tasks.filter(t=>!t.completed&&t.due_date&&t.due_date<today).length; $('progress-ring').style.setProperty('--pct',pct); $('progress-pct').textContent=pct+'%';$('progress-pct-sub').textContent=`${done}/${total} done`;$('progress-tasks').textContent=`${finishedTasks}/${todayTasks.length}`;$('progress-habits').textContent=`${finishedHabits}/${habits.length}`;$('progress-overdue').textContent=overdue;$('stat-overdue-tasks').textContent=overdue;$('stat-overdue-sub').textContent=overdue?'A small next step can clear the list.':'Nothing overdue. Nice work.';$('stat-progress-score').textContent=pct;const scores=habits.map(streak);$('stat-current-streak').innerHTML=`${scores.length?Math.min(...scores):0} <span class="unit">days</span>`;$('stat-best-streak').innerHTML=`${scores.length?Math.max(...scores):0} <span class="unit">days</span>`;$('today-tasks-body').innerHTML=dashRows(todayTasks,'task',today);$('today-habits-body').innerHTML=dashRows(habits,'habit',today);const next=tasks.filter(t=>!t.completed&&t.due_date&&t.due_date>today).slice(0,5);$('upcoming-body').innerHTML=next.length?next.map(t=>`<div class="dash-list-row"><span>${esc(t.title)}</span><span>${due(t.due_date)}</span></div>`).join(''):'<div class="dash-empty"><div class="dash-empty-title">Nothing scheduled ahead</div><div class="dash-empty-sub">Plan your week when you’re ready.</div></div>'; renderChart(); }
-function renderChart(){if(!window.Chart)return;const dates=weekDates(),values=dates.map(d=>{const day=iso(d),total=habits.length+tasks.filter(t=>t.due_date===day).length,done=habits.filter(h=>completed(h,day)).length+tasks.filter(t=>t.due_date===day&&t.completed).length;return total?Math.round(done/total*100):0;});if(chart)chart.destroy();chart=new Chart($('weekly-productivity-chart'),{type:'bar',data:{labels:dates.map(d=>d.toLocaleDateString('en-US',{weekday:'short'})),datasets:[{data:values,backgroundColor:'#6658e8',borderRadius:7}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}});}
-function renderAll(){renderHabits();renderTasks();renderDashboard();}
-async function addHabit(){const name=$('habit-input').value.trim();if(!name)return $('habit-input').focus();try{const data=await api('/habits',{method:'POST',body:JSON.stringify({name})});habits.push(data.habit);$('habit-input').value='';renderAll();}catch(e){alert(e.message);}}
-async function addTask(){const title=$('task-input').value.trim();if(!title)return $('task-input').focus();try{const data=await api('/tasks',{method:'POST',body:JSON.stringify({title,due_date:$('task-date-input').value||null})});tasks.push(data.task);$('task-input').value='';$('task-date-input').value='';renderAll();}catch(e){alert(e.message);}}
-async function toggleHabit(id,date){try{const data=await api('/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({date})}),h=habits.find(h=>h.id===id),i=(h.completions||[]).findIndex(c=>c.date===date);if(i>=0)h.completions.splice(i,1);if(data.completion.completed)h.completions.push(data.completion);renderAll();}catch(e){alert(e.message);refresh();}}
-async function toggleTask(id,checked){try{const data=await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({completed:checked})}),i=tasks.findIndex(t=>t.id===id);tasks[i]=data.task;renderAll();}catch(e){alert(e.message);refresh();}}
-async function deleteItem(type,id){if(!confirm('Delete this '+type+'?'))return;try{await api('/'+type+'s/'+id,{method:'DELETE'});if(type==='habit')habits=habits.filter(h=>h.id!==id);else tasks=tasks.filter(t=>t.id!==id);renderAll();}catch(e){alert(e.message);}}
+
+// ----------------------------------------------------------------------------
+// 4. UI Helpers
+// ----------------------------------------------------------------------------
+
+/** Displays a temporary alert box in the given element */
+function alertBox(id, text, type = 'error') {
+    const el = $(id);
+    el.innerHTML = `<div class="alert alert-${type}">${esc(text)}</div>`;
+    setTimeout(() => el.innerHTML = '', 4500);
+}
+
+/** Updates user-related UI elements and localStorage */
+function setUser(user) {
+    localStorage.setItem('user', JSON.stringify(user));
+    $('user-name').textContent = user.first_name || user.username || 'User';
+    $('user-email').textContent = user.email || '';
+    $('user-avatar').textContent = (user.first_name || user.username || 'U')[0].toUpperCase();
+    [
+        ['username', 'username'],
+        ['email', 'email'],
+        ['first-name', 'first_name'],
+        ['last-name', 'last_name']
+    ].forEach(([id, key]) => {
+        if ($('profile-' + id)) $('profile-' + id).value = user[key] || '';
+    });
+}
+
+/** Toggles between login and register modals */
+function auth(mode) {
+    $('login-modal').classList.toggle('active', mode === 'login');
+    $('register-modal').classList.toggle('active', mode === 'register');
+}
+
+/** Switches the active page section and re-renders */
+function page(name) {
+    document.querySelectorAll('.page-section').forEach(el =>
+        el.classList.toggle('active', el.id === name + '-section')
+    );
+    document.querySelectorAll('.nav-link').forEach(el =>
+        el.classList.toggle('active', el.id === name + '-link')
+    );
+    renderAll();
+}
+
+/** Fetches habits and tasks from API and re-renders */
+async function refresh() {
+    [habits, tasks] = await Promise.all([api('/habits'), api('/tasks')]);
+    renderAll();
+}
+
+// ----------------------------------------------------------------------------
+// 5. Habit & Task Logic Helpers
+// ----------------------------------------------------------------------------
+
+/** Checks if a habit was completed on a given date */
+const completed = (habit, date) => (habit.completions || []).some(x => x.date === date && x.completed);
+
+/** Calculates the current streak for a habit */
+function streak(habit) {
+    let count = 0;
+    for (let i = 0; i < 366; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        if (!completed(habit, iso(d))) break;
+        count++;
+    }
+    return count;
+}
+
+/** Returns an array of 7 Date objects for the current week */
+function weekDates() {
+    return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(weekStart);
+        d.setDate(d.getDate() + i);
+        return d;
+    });
+}
+
+// ----------------------------------------------------------------------------
+// 6. Rendering Functions
+// ----------------------------------------------------------------------------
+
+/** Renders the habits calendar view */
+function renderHabits() {
+    const dates = weekDates();
+    const body = $('calendar-body');
+    $('calendar-days-header').innerHTML = dates.map(d =>
+        `<div class="calendar-day-header"><span>${d.toLocaleDateString('en-US', { weekday: 'short' })}</span><span>${d.getDate()}</span></div>`
+    ).join('');
+    $('week-display').textContent = `Week of ${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${dates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    if (!habits.length) {
+        body.innerHTML = '<div class="empty-state">No habits yet. Add one to get started!</div>';
+        return;
+    }
+    body.innerHTML = habits.map(h => `
+        <div class="habit-row">
+            <div class="habit-label">
+                <span class="habit-name">${esc(h.name)}</span>
+                <div class="habit-stats"><span class="stat">🔥 ${streak(h)}</span></div>
+                <button class="btn-delete" data-delete-habit="${h.id}">×</button>
+            </div>
+            <div class="habit-checkboxes">
+                ${dates.map(d => `
+                    <label class="checkbox-label">
+                        <input class="habit-checkbox" data-habit="${h.id}" data-date="${iso(d)}" type="checkbox" ${completed(h, iso(d)) ? 'checked' : ''}>
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+/** Formats a due date for display */
+function due(date) {
+    if (!date) return 'No due date';
+    if (date === iso(new Date())) return 'Today';
+    return new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** Renders the tasks list */
+function renderTasks() {
+    const target = $('tasks-list');
+    if (!tasks.length) {
+        target.innerHTML = '<div class="empty-state">No tasks yet. Add one to get started!</div>';
+        return;
+    }
+    target.innerHTML = tasks.map(t => `
+        <div class="task-row ${t.completed ? 'done' : ''}">
+            <input type="checkbox" data-task="${t.id}" ${t.completed ? 'checked' : ''}>
+            <span class="task-text">${esc(t.title)}</span>
+            <span class="task-due">${due(t.due_date)}</span>
+            <button class="btn-delete" data-delete-task="${t.id}">×</button>
+        </div>
+    `).join('');
+}
+
+/** Renders a list of dashboard rows (tasks or habits) */
+function dashRows(items, kind, today) {
+    if (!items.length) return `
+        <div class="dash-empty">
+            <div class="dash-empty-title">${kind === 'task' ? 'No tasks for today 🎉' : 'No habits scheduled'}</div>
+            <div class="dash-empty-sub">${kind === 'task' ? 'Plan one small thing — momentum starts there.' : 'Create one habit you can repeat daily.'}</div>
+        </div>
+    `;
+    return items.map(x => `
+        <div class="dash-list-row">
+            <label>
+                <input type="checkbox" ${kind === 'task'
+                    ? `data-task="${x.id}" ${x.completed ? 'checked' : ''}`
+                    : `data-habit="${x.id}" data-date="${today}" ${completed(x, today) ? 'checked' : ''}`}>
+                ${esc(kind === 'task' ? x.title : x.name)}
+            </label>
+            <span>${kind === 'task' ? due(x.due_date) : streak(x) + ' day streak'}</span>
+        </div>
+    `).join('');
+}
+
+/** Renders the dashboard view */
+function renderDashboard() {
+    const today = iso(new Date());
+    const todayTasks = tasks.filter(t => t.due_date === today);
+    const finishedTasks = todayTasks.filter(t => t.completed).length;
+    const finishedHabits = habits.filter(h => completed(h, today)).length;
+    const total = todayTasks.length + habits.length;
+    const done = finishedTasks + finishedHabits;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    const overdue = tasks.filter(t => !t.completed && t.due_date && t.due_date < today).length;
+
+    $('progress-ring').style.setProperty('--pct', pct);
+    $('progress-pct').textContent = pct + '%';
+    $('progress-pct-sub').textContent = `${done}/${total} done`;
+    $('progress-tasks').textContent = `${finishedTasks}/${todayTasks.length}`;
+    $('progress-habits').textContent = `${finishedHabits}/${habits.length}`;
+    $('progress-overdue').textContent = overdue;
+    $('stat-overdue-tasks').textContent = overdue;
+    $('stat-overdue-sub').textContent = overdue ? 'A small next step can clear the list.' : 'Nothing overdue. Nice work.';
+    $('stat-progress-score').textContent = pct;
+
+    const scores = habits.map(streak);
+    $('stat-current-streak').innerHTML = `${scores.length ? Math.min(...scores) : 0} <span class="unit">days</span>`;
+    $('stat-best-streak').innerHTML = `${scores.length ? Math.max(...scores) : 0} <span class="unit">days</span>`;
+
+    $('today-tasks-body').innerHTML = dashRows(todayTasks, 'task', today);
+    $('today-habits-body').innerHTML = dashRows(habits, 'habit', today);
+
+    const next = tasks.filter(t => !t.completed && t.due_date && t.due_date > today).slice(0, 5);
+    $('upcoming-body').innerHTML = next.length
+        ? next.map(t => `<div class="dash-list-row"><span>${esc(t.title)}</span><span>${due(t.due_date)}</span></div>`).join('')
+        : '<div class="dash-empty"><div class="dash-empty-title">Nothing scheduled ahead</div><div class="dash-empty-sub">Plan your week when you’re ready.</div></div>';
+
+    renderChart();
+}
+
+/** Renders the weekly productivity chart */
+function renderChart() {
+    if (!window.Chart) return;
+    const dates = weekDates();
+    const values = dates.map(d => {
+        const day = iso(d);
+        const total = habits.length + tasks.filter(t => t.due_date === day).length;
+        const done = habits.filter(h => completed(h, day)).length + tasks.filter(t => t.due_date === day && t.completed).length;
+        return total ? Math.round(done / total * 100) : 0;
+    });
+    if (chart) chart.destroy();
+    chart = new Chart($('weekly-productivity-chart'), {
+        type: 'bar',
+        data: {
+            labels: dates.map(d => d.toLocaleDateString('en-US', { weekday: 'short' })),
+            datasets: [{
+                data: values,
+                backgroundColor: '#6658e8',
+                borderRadius: 7
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+/** Re-renders all views */
+function renderAll() {
+    renderHabits();
+    renderTasks();
+    renderDashboard();
+}
+
+// ----------------------------------------------------------------------------
+// 7. CRUD Actions
+// ----------------------------------------------------------------------------
+
+/** Adds a new habit */
+async function addHabit() {
+    const name = $('habit-input').value.trim();
+    if (!name) return $('habit-input').focus();
+    try {
+        const data = await api('/habits', { method: 'POST', body: JSON.stringify({ name }) });
+        habits.push(data.habit);
+        $('habit-input').value = '';
+        renderAll();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+/** Adds a new task */
+async function addTask() {
+    const title = $('task-input').value.trim();
+    if (!title) return $('task-input').focus();
+    try {
+        const data = await api('/tasks', {
+            method: 'POST',
+            body: JSON.stringify({ title, due_date: $('task-date-input').value || null })
+        });
+        tasks.push(data.task);
+        $('task-input').value = '';
+        $('task-date-input').value = '';
+        renderAll();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+/** Toggles a habit completion for a specific date */
+async function toggleHabit(id, date) {
+    try {
+        const data = await api('/habits/' + id + '/toggle', { method: 'POST', body: JSON.stringify({ date }) });
+        const h = habits.find(h => h.id === id);
+        const i = (h.completions || []).findIndex(c => c.date === date);
+        if (i >= 0) h.completions.splice(i, 1);
+        if (data.completion.completed) h.completions.push(data.completion);
+        renderAll();
+    } catch (e) {
+        alert(e.message);
+        refresh();
+    }
+}
+
+/** Toggles a task's completed state */
+async function toggleTask(id, checked) {
+    try {
+        const data = await api('/tasks/' + id, { method: 'PUT', body: JSON.stringify({ completed: checked }) });
+        const i = tasks.findIndex(t => t.id === id);
+        tasks[i] = data.task;
+        renderAll();
+    } catch (e) {
+        alert(e.message);
+        refresh();
+    }
+}
+
+/** Deletes a habit or task */
+async function deleteItem(type, id) {
+    if (!confirm('Delete this ' + type + '?')) return;
+    try {
+        await api('/' + type + 's/' + id, { method: 'DELETE' });
+        if (type === 'habit') habits = habits.filter(h => h.id !== id);
+        else tasks = tasks.filter(t => t.id !== id);
+        renderAll();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 8. Event Binding
+// ----------------------------------------------------------------------------
+
 function bind() {
     const safeOn = (id, event, handler) => {
         const el = $(id);
         if (el) el.addEventListener(event, handler);
     };
 
+    // --- Auth Navigation ---
     safeOn('signup-link', 'click', e => {
         e.preventDefault();
         auth('register');
@@ -58,6 +385,7 @@ function bind() {
         auth('login');
     });
 
+    // --- Forgot Password ---
     safeOn('forgot-password-link', 'click', async e => {
         e.preventDefault();
         const email = prompt('Enter your account email address:');
@@ -66,7 +394,7 @@ function bind() {
         try {
             const data = await api('/auth/forgot-password', {
                 method: 'POST',
-                body: JSON.stringify({email: email.trim()})
+                body: JSON.stringify({ email: email.trim() })
             });
 
             // In development the API returns a reset token so the flow can be
@@ -81,7 +409,7 @@ function bind() {
                 }
                 await api('/auth/reset-password', {
                     method: 'POST',
-                    body: JSON.stringify({token: data.reset_token, password})
+                    body: JSON.stringify({ token: data.reset_token, password })
                 });
                 alert('Password reset successfully. You can now sign in.');
             } else {
@@ -92,6 +420,7 @@ function bind() {
         }
     });
 
+    // --- Login Form ---
     const loginForm = $('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', async e => {
@@ -110,7 +439,7 @@ function bind() {
                 button.textContent = 'Signing in...';
                 const data = await api('/auth/login', {
                     method: 'POST',
-                    body: JSON.stringify({email, password, remember})
+                    body: JSON.stringify({ email, password, remember })
                 });
                 setUser(data.user);
                 auth();
@@ -125,6 +454,7 @@ function bind() {
         });
     }
 
+    // --- Register Form ---
     const registerForm = $('register-form');
     if (registerForm) {
         registerForm.addEventListener('submit', async e => {
@@ -177,16 +507,19 @@ function bind() {
         });
     }
 
+    // --- Google OAuth ---
     ['google-login', 'google-signup'].forEach(id => {
         safeOn(id, 'click', () => {
             window.location.href = API + '/auth/google';
         });
     });
 
+    // --- Page Navigation ---
     ['dashboard', 'tasks', 'habits'].forEach(name => {
         safeOn(name + '-link', 'click', () => page(name));
     });
 
+    // --- Account / Profile ---
     safeOn('account-footer-btn', 'click', e => {
         if (!e.target.closest('#logout-btn')) page('profile');
     });
@@ -194,7 +527,7 @@ function bind() {
     safeOn('logout-btn', 'click', async e => {
         e.stopPropagation();
         try {
-            await api('/auth/logout', {method: 'POST'});
+            await api('/auth/logout', { method: 'POST' });
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
@@ -203,6 +536,7 @@ function bind() {
         }
     });
 
+    // --- Habit & Task Actions ---
     safeOn('add-habit-btn', 'click', addHabit);
     safeOn('add-task-btn', 'click', addTask);
     safeOn('habit-input', 'keydown', e => { if (e.key === 'Enter') addHabit(); });
@@ -211,19 +545,24 @@ function bind() {
     safeOn('dash-add-task-btn', 'click', () => { page('tasks'); $('task-input').focus(); });
     safeOn('dash-add-habit-btn', 'click', () => { page('habits'); $('habit-input').focus(); });
     safeOn('upcoming-view-all', 'click', () => page('tasks'));
+
+    // --- Week Navigation ---
     safeOn('prev-week', 'click', () => { weekStart.setDate(weekStart.getDate() - 7); renderAll(); });
     safeOn('next-week', 'click', () => { weekStart.setDate(weekStart.getDate() + 7); renderAll(); });
 
+    // --- Delegated Change Events ---
     document.addEventListener('change', e => {
         if (e.target.dataset.habit) toggleHabit(e.target.dataset.habit, e.target.dataset.date);
         if (e.target.dataset.task) toggleTask(e.target.dataset.task, e.target.checked);
     });
 
+    // --- Delegated Click Events ---
     document.addEventListener('click', e => {
         if (e.target.dataset.deleteHabit) deleteItem('habit', e.target.dataset.deleteHabit);
         if (e.target.dataset.deleteTask) deleteItem('task', e.target.dataset.deleteTask);
     });
 
+    // --- Theme Toggle ---
     document.querySelectorAll('.theme-toggle').forEach(button => {
         button.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
@@ -231,8 +570,10 @@ function bind() {
         });
     });
 
+    // --- Back to Dashboard ---
     safeOn('back-to-dashboard-btn', 'click', () => page('dashboard'));
 
+    // --- Profile Form ---
     safeOn('profile-form', 'submit', async e => {
         e.preventDefault();
         try {
@@ -257,4 +598,20 @@ function bind() {
     });
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{bind();if(localStorage.getItem('habittrack_dark')==='true')document.documentElement.dataset.theme='dark';try{const user=await api('/auth/current-user');setUser(user);auth();await refresh();}catch{localStorage.removeItem('user');auth('login');}});
+// ----------------------------------------------------------------------------
+// 9. Application Initialization
+// ----------------------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', async () => {
+    bind();
+    if (localStorage.getItem('habittrack_dark') === 'true') document.documentElement.dataset.theme = 'dark';
+    try {
+        const user = await api('/auth/current-user');
+        setUser(user);
+        auth();
+        await refresh();
+    } catch {
+        localStorage.removeItem('user');
+        auth('login');
+    }
+});
