@@ -57,7 +57,39 @@ async function api(path, options = {}) {
 }
 
 // ----------------------------------------------------------------------------
-// 4. UI Helpers
+// 4. Theme Management (Global)
+// ----------------------------------------------------------------------------
+
+/**
+ * Applies the given theme globally.
+ * - Toggles body.dark-mode and html[data-theme]
+ * - Persists preference to localStorage
+ * - Updates ALL theme toggle button icons
+ */
+function applyTheme(isDark) {
+    document.body.classList.toggle('dark-mode', isDark);
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark-mode', isDark);
+    localStorage.setItem('habittrack_dark', isDark ? 'true' : 'false');
+
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+        btn.textContent = isDark ? '🌙' : '☀️';
+        btn.setAttribute('aria-pressed', String(isDark));
+        btn.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+    });
+
+    // Sync the preferences checkbox in the profile section
+    const prefNeon = $('pref-neon');
+    if (prefNeon) prefNeon.checked = isDark;
+}
+
+/** Returns whether dark mode is currently active */
+function isDarkMode() {
+    return document.body.classList.contains('dark-mode');
+}
+
+// ----------------------------------------------------------------------------
+// 5. UI Helpers
 // ----------------------------------------------------------------------------
 
 /** Displays a temporary alert box in the given element */
@@ -107,7 +139,7 @@ async function refresh() {
 }
 
 // ----------------------------------------------------------------------------
-// 5. Habit & Task Logic Helpers
+// 6. Habit & Task Logic Helpers
 // ----------------------------------------------------------------------------
 
 /** Checks if a habit was completed on a given date */
@@ -135,7 +167,7 @@ function weekDates() {
 }
 
 // ----------------------------------------------------------------------------
-// 6. Rendering Functions
+// 7. Rendering Functions
 // ----------------------------------------------------------------------------
 
 /** Renders the habits calendar view */
@@ -288,7 +320,7 @@ function renderAll() {
 }
 
 // ----------------------------------------------------------------------------
-// 7. CRUD Actions
+// 8. CRUD Actions
 // ----------------------------------------------------------------------------
 
 /** Adds a new habit */
@@ -365,7 +397,7 @@ async function deleteItem(type, id) {
 }
 
 // ----------------------------------------------------------------------------
-// 8. Event Binding
+// 9. Event Binding
 // ----------------------------------------------------------------------------
 
 function bind() {
@@ -562,12 +594,16 @@ function bind() {
         if (e.target.dataset.deleteTask) deleteItem('task', e.target.dataset.deleteTask);
     });
 
-    // --- Theme Toggle ---
+    // --- Theme Toggle (all buttons) ---
     document.querySelectorAll('.theme-toggle').forEach(button => {
         button.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('habittrack_dark', document.body.classList.contains('dark-mode'));
+            applyTheme(!isDarkMode());
         });
+    });
+
+    // --- Dark mode preference checkbox in Profile ---
+    safeOn('pref-neon', 'change', e => {
+        applyTheme(e.target.checked);
     });
 
     // --- Back to Dashboard ---
@@ -599,12 +635,16 @@ function bind() {
 }
 
 // ----------------------------------------------------------------------------
-// 9. Application Initialization
+// 10. Application Initialization
 // ----------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', async () => {
     bind();
-    if (localStorage.getItem('habittrack_dark') === 'true') document.documentElement.dataset.theme = 'dark';
+
+    // Restore theme BEFORE any rendering so there's no flash
+    const savedDark = localStorage.getItem('habittrack_dark') === 'true';
+    applyTheme(savedDark);
+
     try {
         const user = await api('/auth/current-user');
         setUser(user);
